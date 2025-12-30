@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title> Kutty Lab | Professional Edition</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.11.0/math.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body id="mainBody" class="bg-slate-50 text-slate-900 font-sans transition-colors duration-500 overflow-hidden">
+
+<div id="loader" class="fixed inset-0 z-[100] bg-white/80 dark:bg-slate-900/80 backdrop-blur-md flex items-center justify-center transition-opacity duration-300 opacity-0 pointer-events-none">
+    <div class="flex flex-col items-center">
+        <div class="loader"></div>
+        <p class="mt-4 font-bold text-indigo-600 uppercase tracking-widest text-xs">
+            Computing Field…
+        </p>
+    </div>
+</div>
+
+    <div class="flex flex-col h-screen scale-in overflow-hidden">
+        
+        <header class="bg-white border-b px-4 py-3 lg:px-8 lg:py-4 flex justify-between items-center shadow-sm z-10 dark-target flex-shrink-0">
+
+<h1 class="text-lg lg:text-xl font-bold truncate flex items-center gap-2">
+    <span>🤖</span>
+    <span class="bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+        Kutty Lab
+    </span>
+</h1>
+
+            
+            <div class="flex items-center gap-2 lg:gap-4">
+                <button onclick="toggleDarkMode()" class="p-2 rounded-full bg-slate-100 hover:bg-slate-800 transition-all border border-slate-200 dark:border-slate-700" id="themeBtn">🌙</button>
+                <button onclick="plot()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 lg:px-6 lg:py-2 rounded-xl font-bold transition-all shadow-lg active:scale-95 text-sm lg:text-base">Update</button>
+            </div>
+        </header>
+
+        <div class="flex flex-1 flex-col lg:flex-row overflow-y-auto lg:overflow-hidden">
+            
+            <aside class="w-full lg:w-80 bg-white border-b lg:border-b-0 lg:border-r p-4 lg:p-6 dark-target shadow-inner flex-shrink-0 lg:overflow-y-auto custom-scrollbar z-20">
+                <div class="grid grid-cols-1 gap-4 lg:space-y-6 lg:block">
+                    <div>
+                        <label class="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Scalar Field f(x,y,z)</label>
+                        <input id="scalar" value="x^2+y^2+z^2" class="w-full p-3 rounded-xl border border-slate-200 outline-none focus:ring-2 focus:ring-indigo-500 bg-white text-slate-900 shadow-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Vector Field [u,v,w]</label>
+                        <input id="vector" value="[x,y,z]" class="w-full p-3 rounded-xl border border-slate-200 outline-none focus:ring-2 focus:ring-indigo-500 bg-white text-slate-900 shadow-sm">
+                    </div>
+                    
+                    <div class="grid grid-cols-2 lg:grid-cols-1 gap-4">
+                        <div>
+                            <label class="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Palette</label>
+                            <select id="colorScale" class="w-full p-3 rounded-xl border border-slate-200 bg-white outline-none shadow-sm">
+                                <option value="Viridis">Viridis</option>
+                                <option value="Portland">Portland</option>
+                                <option value="Hot">Thermal</option>
+                                <option value="Electric">Electric</option>
+                                <option value="Jet">Classic Jet</option>
+                                <option value="Blues">Blue Gradient</option> </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Vector Density</label>
+                            <div class="flex items-center h-[46px]">
+                                <input type="range" id="density" min="5" max="25" value="12" class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+
+            <main class="flex-1 grid grid-cols-1 lg:grid-cols-2 p-3 gap-3 bg-slate-100 dark-target-bg lg:overflow-hidden min-h-0">
+                <div id="scalarCont" class="bg-white dark:bg-slate-900 rounded-3xl overflow-hidden shadow-xl border border-slate-200 dark:border-slate-800 relative group min-h-[50vh] lg:min-h-0">
+                    <button onclick="toggleFS('scalarCont')" class="absolute top-3 left-3 lg:top-4 lg:left-4 z-20 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 bg-black/50 hover:bg-black/70 text-white px-4 py-2 rounded-full text-xs font-bold transition-all backdrop-blur-sm">⛶ Fullscreen</button>
+                    <div id="scalarPlot" class="absolute inset-0"></div>
+                </div>
+
+                <div id="vectorCont" class="bg-white dark:bg-slate-900 rounded-3xl overflow-hidden shadow-xl border border-slate-200 dark:border-slate-800 relative group min-h-[50vh] lg:min-h-0">
+                    <button onclick="toggleFS('vectorCont')" class="absolute top-3 left-3 lg:top-4 lg:left-4 z-20 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 bg-black/50 hover:bg-black/70 text-white px-4 py-2 rounded-full text-xs font-bold transition-all backdrop-blur-sm">⛶ Fullscreen</button>
+                    <div id="vectorPlot" class="absolute inset-0"></div>
+                </div>
+            </main>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
