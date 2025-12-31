@@ -3,77 +3,34 @@ body.dark-mode { background-color: #020617 !important; color: #f8fafc !important
 .dark-mode .dark-target-bg { background-color: #020617 !important; }
 .dark-mode input, .dark-mode select { background-color: #1e293b !important; color: white !important; border-color: #334155 !important; }
 
-/* Fullscreen Logic - Updated for Mobile */
-.fullscreen-active {
-    position: fixed !important;
-    inset: 0px !important; /* Zero inset for mobile to use full screen */
-    z-index: 50 !important;
-    border-radius: 0 !important; /* Remove corners in fullscreen on mobile */
-}
-
-/* Add margin back for larger screens */
-@media (min-width: 1024px) {
-    .fullscreen-active {
-        inset: 15px !important;
-        border-radius: 24px !important;
-    }
-}
+/* Fullscreen Logic */
+.fullscreen-active { position: fixed !important; inset: 0px !important; z-index: 50 !important; border-radius: 0 !important; }
+@media (min-width: 1024px) { .fullscreen-active { inset: 15px !important; border-radius: 24px !important; } }
 
 /* Animations */
-@keyframes scaleIn {
-    from { opacity: 0; transform: scale(0.98); }
-    to { opacity: 1; transform: scale(1); }
-}
+@keyframes scaleIn { from { opacity: 0; transform: scale(0.98); } to { opacity: 1; transform: scale(1); } }
 .scale-in { animation: scaleIn 0.6s cubic-bezier(0.16, 1, 0.3, 1); }
 
-/* Custom Scrollbar for Sidebar */
+/* Custom Scrollbar */
 .custom-scrollbar::-webkit-scrollbar { width: 5px; }
 .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
 .dark-mode .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; }
 
-/* Ensure Plotly containers look integrated */
+/* Plotly containers */
 .js-plotly-plot, .plot-container, .main-svg { border-radius: 24px !important; }
 
-/* Fix plotly radius in mobile fullscreen */
 @media (max-width: 1024px) {
     .fullscreen-active .js-plotly-plot, 
     .fullscreen-active .plot-container, 
     .fullscreen-active .main-svg { border-radius: 0px !important; }
-
-
-
-
-/*loader*/
+} /* FIXED: Properly closed media query */
 
 /* Smooth orbit loader */
-.loader {
-  display: inline-flex;
-  gap: 10px;
+.loader { display: inline-flex; gap: 10px; }
+.loader:before, .loader:after {
+  content: ""; height: 22px; aspect-ratio: 1; border-radius: 50%;
+  background: radial-gradient(farthest-side,#6366f1 95%,#0000) 35% 35%/6px 6px no-repeat #e0e7ff;
+  transform: scaleX(var(--s,1)) rotate(0deg); animation: l6 1s infinite linear;
 }
-
-.loader:before,
-.loader:after {
-  content: "";
-  height: 22px;
-  aspect-ratio: 1;
-  border-radius: 50%;
-  background:
-    radial-gradient(farthest-side,#6366f1 95%,#0000) 35% 35%/6px 6px no-repeat
-    #e0e7ff;
-  transform: scaleX(var(--s,1)) rotate(0deg);
-  animation: l6 1s infinite linear;
-}
-
-.loader:after {
-  --s: -1;
-  animation-delay: -0.15s;
-}
-
-@keyframes l6 {
-  100% {
-    transform: scaleX(var(--s,1)) rotate(360deg);
-  }
-}
-
-
-
+.loader:after { --s: -1; animation-delay: -0.15s; }
+@keyframes l6 { 100% { transform: scaleX(var(--s,1)) rotate(360deg); } }
