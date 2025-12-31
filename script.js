@@ -237,3 +237,116 @@ window.onload = () => {
     });
     animate(); updatePlot();
 };
+
+
+
+let isFlowing = false;
+let particleGroup = new THREE.Group();
+const MAX_PARTICLES = 400;
+const particles = [];
+
+function initParticles() {
+    if (particles.length > 0) return;
+    scenes.vector.add(particleGroup);
+    const pGeo = new THREE.SphereGeometry(0.04, 6, 6);
+    const pMat = new THREE.MeshBasicMaterial({ color: 0x6366f1, transparent: true, opacity: 0.8 });
+
+    for (let i = 0; i < MAX_PARTICLES; i++) {
+        const mesh = new THREE.Mesh(pGeo, pMat.clone());
+        resetParticle(mesh);
+        particleGroup.add(mesh);
+        particles.push(mesh);
+    }
+}
+
+function resetParticle(p) {
+    const range = 4;
+    p.position.set(
+        (Math.random() - 0.5) * range * 2,
+        (Math.random() - 0.5) * range * 2,
+        (Math.random() - 0.5) * range * 2
+    );
+    p.life = Math.random() * 60 + 40;
+}
+
+function updateParticles() {
+    if (!isFlowing) return;
+
+    const expr = document.getElementById("vector").value;
+    const parts = expr.replace(/[\[\]\s]/g, "").split(",");
+    const dof = parts.length;
+
+    particles.forEach(p => {
+        try {
+            // 1. Dynamic Color Gradients based on Theme
+            const lifeRatio = p.life / 100;
+            let pColor;
+
+            if (isDarkMode) {
+                // Dark Mode: Silver to Dark Grey Gradient
+                // Lighter (Silver) when young, Darker Grey when old
+                pColor = new THREE.Color().lerpColors(
+                    new THREE.Color(0x475569), // Slate Grey
+                    new THREE.Color(0xf8fafc), // Ghost White/Silver
+                    lifeRatio
+                );
+            } else {
+                // Light Mode: Deep Indigo to Slate Blue
+                // Darker colors to ensure visibility on light background
+                pColor = new THREE.Color().lerpColors(
+                    new THREE.Color(0x1e293b), // Deep Slate
+                    new THREE.Color(0x4f46e5), // Vibrant Indigo
+                    lifeRatio
+                );
+            }
+            p.material.color.copy(pColor);
+
+            // 2. Movement Logic (DoF)
+            const scope = { x: p.position.x, y: p.position.z, z: p.position.y };
+            let vx = math.evaluate(parts[0] || "0", scope);
+            let vy = dof > 1 ? math.evaluate(parts[1], scope) : 0;
+            let vz = dof > 2 ? math.evaluate(parts[2], scope) : 0;
+
+            p.position.x += vx * 0.02;
+            if (dof > 1) p.position.z += vy * 0.02;
+            if (dof > 2) p.position.y += vz * 0.02;
+
+            // Constrain Dimensions
+            if (dof === 1) { p.position.z = 0; p.position.y = 0; }
+            if (dof === 2) { p.position.y = 0; }
+
+            // 3. Life and Fade
+            p.life--;
+            p.material.opacity = lifeRatio * (isDarkMode ? 0.8 : 0.9);
+
+            if (p.life <= 0 || Math.abs(p.position.x) > 5 || Math.abs(p.position.y) > 5 || Math.abs(p.position.z) > 5) {
+                resetParticle(p);
+            }
+        } catch (e) { p.life = 0; }
+    });
+}
+// Hook into existing animate loop
+const originalAnimate = animate;
+animate = function() {
+    originalAnimate();
+    updateParticles();
+};
+
+// Event Listener for the UI button
+document.getElementById('flowToggle').addEventListener('click', function() {
+    isFlowing = !isFlowing;
+    this.innerText = isFlowing ? "🛑 FLOW: ON" : "✨ FLOW: OFF";
+    
+    if (isFlowing) {
+        // High contrast when active
+        this.style.backgroundColor = isDarkMode ? "#f8fafc" : "#1e293b";
+        this.style.color = isDarkMode ? "#0f172a" : "#ffffff";
+    } else {
+        // Subtle glassmorphism when inactive
+        this.style.backgroundColor = "rgba(0, 0, 0, 0.4)";
+        this.style.color = "#ffffff";
+    }
+    
+    if (isFlowing) initParticles();
+    particleGroup.visible = isFlowing;
+});
