@@ -8,7 +8,8 @@ const REVERSED_SCALES = {
     Hot: [[0,"#ffffff"],[0.3,"#ffff00"],[0.6,"#ff0000"],[1,"#000000"]],
     Blues: [[0,"#f7fbff"],[0.3,"#6baed6"],[0.6,"#2171b5"],[1,"#08306b"]],
     Electric: [[0,"#ffffff"],[0.25,"#00ffff"],[0.5,"#0000ff"],[0.75,"#ff00ff"],[1,"#000000"]],
-    Portland: [[0,"#8e0152"],[0.25,"#c51b7d"],[0.5,"#f7f7f7"],[0.75,"#4d9221"],[1,"#276419"]]
+    Portland: [[0,"#8e0152"],[0.25,"#c51b7d"],[0.5,"#f7f7f7"],[0.75,"#4d9221"],[1,"#276419"]],
+    SolidIndigo: [[0, "#6366f1"], [1, "#6366f1"]]
 };
 
 function toggleDarkMode() {
@@ -46,8 +47,10 @@ function getVars(expr) {
     return vars;
 }
 
-function plot() {
-    showLoader(true);
+function plot(useLoader = true) {
+    if (useLoader) showLoader(true);
+    const delay = useLoader ? 50 : 0;
+
     setTimeout(() => {
         try {
             let f = document.getElementById("scalar").value.trim();
@@ -59,8 +62,8 @@ function plot() {
             plotScalar(f, bg, txt, colorScale);
             plotVector(v, bg, txt, colorScale);
         } catch (e) { console.error(e); }
-        showLoader(false);
-    }, 50);
+        if (useLoader) showLoader(false);
+    }, delay);
 }
 
 function plotScalar(expr, bg, txt, colorScale) {
@@ -75,7 +78,6 @@ function plotScalar(expr, bg, txt, colorScale) {
     } else if (vars.has("z")) {
         let X=[],Y=[],Z=[],C=[];
         let r=linspace(-5,5,12);
-        // GET SIZE FROM SLIDER
         let currentSize = parseFloat(document.getElementById("markerSize").value);
         r.forEach(x=>r.forEach(y=>r.forEach(z=>{
             try{let v=math.evaluate(expr,{x,y,z});X.push(x);Y.push(y);Z.push(z);C.push(v);}catch(e){}
@@ -98,11 +100,13 @@ function plotScalar(expr, bg, txt, colorScale) {
 function plotVector(expr, bg, txt, colorScale) {
     let parts = expr.replace(/[\[\]\s]/g,"").split(",");
     let density = parseInt(document.getElementById("density").value);
+    let arrowSize = parseFloat(document.getElementById("arrowSize").value); // New Value
     let layout = {autosize:true,paper_bgcolor:bg,plot_bgcolor:bg,font:{color:txt}, margin:{t:20,b:20,l:20,r:20},uirevision:'true'};
+    
     if (parts.length===1) {
         let x=linspace(vector1DBounds.x[0],vector1DBounds.x[1],density*3);
         let u=x.map(v=>{try{return math.evaluate(parts[0],{x:v})}catch(e){return 0}});
-        Plotly.react("vectorPlot",[{ type:'scatter',x,y:x.map(()=>0),mode:'markers', marker:{symbol:'arrow-bar-up',angle:u.map(v=>v>=0?90:270),size:15,color:u.map(Math.abs),colorscale:colorScale,showscale:true} }],{...layout,xaxis:{range:vector1DBounds.x,autorange:false,color:txt},yaxis:{visible:false}});
+        Plotly.react("vectorPlot",[{ type:'scatter',x,y:x.map(()=>0),mode:'markers', marker:{symbol:'arrow-bar-up',angle:u.map(v=>v>=0?90:270),size:15 * arrowSize,color:u.map(Math.abs),colorscale:colorScale,showscale:true} }],{...layout,xaxis:{range:vector1DBounds.x,autorange:false,color:txt},yaxis:{visible:false}});
         attach1DListener("vectorPlot","vector");
     } else {
         let is3D=parts.length===3;
@@ -116,7 +120,8 @@ function plotVector(expr, bg, txt, colorScale) {
                 X.push(x);Y.push(y);Z.push(z);U.push(u);V.push(v);W.push(w);M.push(Math.sqrt(u*u+v*v+w*w));
             }catch(e){}
         }
-        Plotly.react("vectorPlot",[{ type:"cone",x:X,y:Y,z:Z,u:U,v:V,w:W,intensity:M, colorscale:colorScale,sizemode:"scaled",sizeref:0.5,showscale:true }],{...layout,scene:{aspectmode:'cube',xaxis:{color:txt},yaxis:{color:txt},zaxis:{color:txt}}});
+        // Using sizeref to control arrow length
+        Plotly.react("vectorPlot",[{ type:"cone",x:X,y:Y,z:Z,u:U,v:V,w:W,intensity:M, colorscale:colorScale,sizemode:"scaled",sizeref:arrowSize,showscale:true }],{...layout,scene:{aspectmode:'cube',xaxis:{color:txt},yaxis:{color:txt},zaxis:{color:txt}}});
     }
 }
 
@@ -137,6 +142,19 @@ document.getElementById('markerSize').addEventListener('input', (e) => {
     const val = e.target.value;
     document.getElementById('markerSizeVal').innerText = val;
     Plotly.restyle('scalarPlot', { 'marker.size': [parseFloat(val)] });
+});
+
+// REAL-TIME DENSITY UPDATER (No Loader)
+document.getElementById('density').addEventListener('input', () => {
+    plot(false); 
+});
+
+// NEW: REAL-TIME ARROW LENGTH UPDATER (No Loader)
+document.getElementById('arrowSize').addEventListener('input', (e) => {
+    const val = e.target.value;
+    document.getElementById('arrowSizeVal').innerText = val;
+    // Using restyle for efficiency on the vector plot
+    Plotly.restyle('vectorPlot', { 'sizeref': [parseFloat(val)] });
 });
 
 window.onload = plot;
