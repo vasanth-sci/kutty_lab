@@ -21,17 +21,11 @@
 </div>
 
     <div class="flex flex-col h-screen scale-in overflow-hidden">
-        
         <header class="bg-white border-b px-4 py-3 lg:px-8 lg:py-4 flex justify-between items-center shadow-sm z-10 dark-target flex-shrink-0">
-
-<h1 class="text-lg lg:text-xl font-bold truncate flex items-center gap-2">
-    <span>🤖</span>
-    <span class="bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
-        Kutty Lab
-    </span>
-</h1>
-
-            
+            <h1 class="text-lg lg:text-xl font-bold truncate flex items-center gap-2">
+                <span>🤖</span>
+                <span class="bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">Kutty Lab</span>
+            </h1>
             <div class="flex items-center gap-2 lg:gap-4">
                 <button onclick="toggleDarkMode()" class="p-2 rounded-full bg-slate-100 hover:bg-slate-800 transition-all border border-slate-200 dark:border-slate-700" id="themeBtn">🌙</button>
                 <button onclick="plot()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 lg:px-6 lg:py-2 rounded-xl font-bold transition-all shadow-lg active:scale-95 text-sm lg:text-base">Update</button>
@@ -39,7 +33,6 @@
         </header>
 
         <div class="flex flex-1 flex-col lg:flex-row overflow-y-auto lg:overflow-hidden">
-            
             <aside class="w-full lg:w-80 bg-white border-b lg:border-b-0 lg:border-r p-4 lg:p-6 dark-target shadow-inner flex-shrink-0 lg:overflow-y-auto custom-scrollbar z-20">
                 <div class="grid grid-cols-1 gap-4 lg:space-y-6 lg:block">
                     <div>
@@ -60,12 +53,20 @@
                                 <option value="Hot">Thermal</option>
                                 <option value="Electric">Electric</option>
                                 <option value="Jet">Classic Jet</option>
-                                <option value="Blues">Blue Gradient</option> </select>
+                                <option value="Blues">Blue Gradient</option> 
+                            </select>
                         </div>
                         <div>
                             <label class="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Vector Density</label>
                             <div class="flex items-center h-[46px]">
                                 <input type="range" id="density" min="5" max="25" value="12" class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">3D Marker Size</label>
+                            <div class="flex items-center h-[46px] gap-2">
+                                <input type="range" id="markerSize" min="1" max="15" value="3" class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600">
+                                <span id="markerSizeVal" class="text-xs font-bold text-indigo-600 min-w-[20px]">3</span>
                             </div>
                         </div>
                     </div>
