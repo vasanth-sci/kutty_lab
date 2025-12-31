@@ -1,181 +1,239 @@
 let isDarkMode = false;
+const scenes = { scalar: null, vector: null };
+const cameras = { scalar: null, vector: null };
+const renderers = { scalar: null, vector: null };
+const controls = { scalar: null, vector: null };
+const groups = { scalar: new THREE.Group(), vector: new THREE.Group() };
 
-// Zoom bounds
-let scalar1DBounds = { x: [-10, 10] };
-let vector1DBounds = { x: [-10, 10] };
-
-/* ------------------- INVERTED COLOR MAPS ------------------- */
-const REVERSED_SCALES = {
-    Viridis: [
-        [0,"#fde725"],[0.1,"#b5de2b"],[0.2,"#6ece58"],[0.3,"#35b779"],
-        [0.4,"#1f9e89"],[0.5,"#26828e"],[0.6,"#31688e"],
-        [0.7,"#3e4989"],[0.8,"#482878"],[0.9,"#440154"],[1,"#440154"]
-    ],
-    Jet: [
-        [0,"#ff0000"],[0.2,"#ff7f00"],[0.4,"#ffff00"],
-        [0.6,"#7fff7f"],[0.8,"#007fff"],[1,"#00007f"]
-    ],
-    Hot: [
-        [0,"#ffffff"],[0.3,"#ffff00"],[0.6,"#ff0000"],[1,"#000000"]
-    ],
-   Blues: [
-        [0,"#f7fbff"],
-        [0.3,"#6baed6"],
-        [0.6,"#2171b5"],
-        [1,"#08306b"]
-    ],
-    Electric: [
-        [0,"#ffffff"],[0.25,"#00ffff"],[0.5,"#0000ff"],[0.75,"#ff00ff"],[1,"#000000"]
-    ],
-    Portland: [
-        [0,"#8e0152"],[0.25,"#c51b7d"],[0.5,"#f7f7f7"],[0.75,"#4d9221"],[1,"#276419"]
-    ]
+const PALETTES = {
+    Viridis: [[0, 0xfde725], [0.2, 0x5ec962], [0.5, 0x21918c], [0.8, 0x3b528b], [1, 0x440154]],
+    Hot: [[0, 0xffffff], [0.3, 0xffaa00], [0.6, 0xe60000], [1, 0x000000]],
+    Cool: [[0, 0xff00ff], [0.5, 0x0000ff], [1, 0x00ffff]],
+    Jet: [[0, 0x800000], [0.1, 0xff0000], [0.35, 0xffff00], [0.65, 0x00ffff], [0.85, 0x0000ff], [1, 0x00008f]],
+    Sunset: [[0, 0xffd200], [1, 0xf7971e]]
 };
-/* ----------------------------------------------------------- */
+
+function getColor(t, scaleName) {
+    const palette = PALETTES[scaleName] || PALETTES.Viridis;
+    const rt = Math.max(0, Math.min(1, t));
+    for(let i=0; i<palette.length-1; i++){
+        if(rt >= palette[i][0] && rt <= palette[i+1][0]){
+            const f = (rt - palette[i][0]) / (palette[i+1][0] - palette[i][0]);
+            return new THREE.Color(palette[i][1]).lerp(new THREE.Color(palette[i+1][1]), f);
+        }
+    }
+    return new THREE.Color(palette[palette.length-1][1]);
+}
+
+function initWorld(containerId, type) {
+    const container = document.getElementById(containerId);
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0xffffff);
+    const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
+    camera.position.set(10, 10, 10);
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setSize(container.clientWidth, container.clientHeight);
+    container.appendChild(renderer.domElement);
+    const orbit = new THREE.OrbitControls(camera, renderer.domElement);
+    scene.add(new THREE.AxesHelper(5));
+    scene.add(new THREE.GridHelper(10, 10, 0xcccccc, 0xeeeeee));
+    scene.add(new THREE.AmbientLight(0xffffff, 0.7)); 
+    const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+    dirLight.position.set(5, 10, 7);
+    scene.add(dirLight);
+    scene.add(groups[type]);
+    scenes[type] = scene; cameras[type] = camera; renderers[type] = renderer; controls[type] = orbit;
+}
+
+function renderScalar() {
+    groups.scalar.clear();
+    const expr = document.getElementById("scalar").value;
+    const palette = document.getElementById("colorScale").value;
+    const dotSize = parseFloat(document.getElementById("markerSize").value);
+    const range = 4;
+    const hasY = expr.includes('y'), hasZ = expr.includes('z');
+    let minV = Infinity, maxV = -Infinity;
+
+    try {
+        if (!hasY && !hasZ) {
+            const pts = [];
+            for(let x=-range; x<=range; x+=0.1) {
+                let v = math.evaluate(expr, {x, y:0, z:0});
+                pts.push(new THREE.Vector3(x, v, 0));
+                minV = Math.min(minV, v); maxV = Math.max(maxV, v);
+            }
+            const geo = new THREE.BufferGeometry().setFromPoints(pts);
+            const cols = [];
+            pts.forEach(p => {
+                const c = getColor((p.y-minV)/(maxV-minV||1), palette);
+                cols.push(c.r, c.g, c.b);
+            });
+            geo.setAttribute('color', new THREE.Float32BufferAttribute(cols, 3));
+            groups.scalar.add(new THREE.Line(geo, new THREE.LineBasicMaterial({vertexColors: true, linewidth: 3})));
+        } else if (!hasZ) {
+            const dens = 50;
+            const geo = new THREE.PlaneGeometry(range*2, range*2, dens, dens);
+            geo.rotateX(-Math.PI/2);
+            const pos = geo.attributes.position.array;
+            const vals = [];
+            for(let i=0; i<pos.length; i+=3) {
+                let v = math.evaluate(expr, {x:pos[i], y:pos[i+2], z:0});
+                pos[i+1] = v; vals.push(v);
+                minV = Math.min(minV, v); maxV = Math.max(maxV, v);
+            }
+            const cols = new Float32Array(pos.length);
+            for(let i=0; i<vals.length; i++) {
+                const c = getColor((vals[i]-minV)/(maxV-minV||1), palette);
+                cols[i*3]=c.r; cols[i*3+1]=c.g; cols[i*3+2]=c.b;
+            }
+            geo.setAttribute('color', new THREE.BufferAttribute(cols, 3));
+            geo.computeVertexNormals();
+            groups.scalar.add(new THREE.Mesh(geo, new THREE.MeshPhongMaterial({vertexColors:true, side:THREE.DoubleSide})));
+        } else {
+            // 3D Logic: Scientific Instanced Spheres with 0.45 Opacity
+            const dens = 14; 
+            const step = (range*2)/dens;
+            const data = [];
+            
+            for(let x=-range; x<=range; x+=step)
+                for(let y=-range; y<=range; y+=step)
+                    for(let z=-range; z<=range; z+=step) {
+                        let v = math.evaluate(expr, {x,y,z});
+                        minV = Math.min(minV, v); maxV = Math.max(maxV, v);
+                        data.push({x, y, z, v});
+                    }
+
+            const sphereGeo = new THREE.SphereGeometry(dotSize, 12, 12);
+            
+            const sphereMat = new THREE.MeshPhongMaterial({
+                transparent: true,
+                opacity: 0.45,      // <--- SET TO 0.45 AS REQUESTED
+                depthWrite: false,   
+                shininess: 120,     
+                specular: 0x555555  
+            });
+
+            const instancedMesh = new THREE.InstancedMesh(sphereGeo, sphereMat, data.length);
+            const matrix = new THREE.Matrix4();
+            data.forEach((d, i) => {
+                matrix.setPosition(d.x, d.y, d.z);
+                instancedMesh.setMatrixAt(i, matrix);
+                const color = getColor((d.v - minV) / (maxV - minV || 1), palette);
+                instancedMesh.setColorAt(i, color);
+            });
+            groups.scalar.add(instancedMesh);
+        }
+    } catch(e) { console.error(e); }
+    updateLegend('scalarLegend', minV, maxV, palette);
+}
+
+// ... rest of the code (renderVector, updateLegend, updateLabels, etc.) remains identical to previous version ...
+
+function renderVector() {
+    groups.vector.clear();
+    const expr = document.getElementById("vector").value;
+    const palette = document.getElementById("colorScale").value;
+    const dens = parseInt(document.getElementById("density").value);
+    const size = parseFloat(document.getElementById("arrowSize").value);
+    const parts = expr.replace(/[\[\]\s]/g, "").split(",");
+    const range = 4, step = (range*2)/dens;
+    let maxMag = 0; const vectors = [];
+    for(let x=-range; x<=range; x+=step) {
+        for(let y=(parts.length > 1 ? -range : 0); y<=(parts.length > 1 ? range : 0); y+=step) {
+            for(let z=(parts.length > 2 ? -range : 0); z<=(parts.length > 2 ? range : 0); z+=step) {
+                try {
+                    const u = math.evaluate(parts[0] || "0", {x,y,z});
+                    const v = parts.length > 1 ? math.evaluate(parts[1], {x,y,z}) : 0;
+                    const w = parts.length > 2 ? math.evaluate(parts[2], {x,y,z}) : 0;
+                    const mag = Math.sqrt(u*u + v*v + w*w);
+                    maxMag = Math.max(maxMag, mag);
+                    vectors.push({x,y,z,u,v,w,mag});
+                } catch(e){}
+            }
+        }
+    }
+    vectors.forEach(v => {
+        if(v.mag === 0) return;
+        const color = getColor(v.mag/(maxMag||1), palette);
+        groups.vector.add(new THREE.ArrowHelper(new THREE.Vector3(v.u, v.w, v.v).normalize(), new THREE.Vector3(v.x, v.z, v.y), size, color.getHex(), size*0.2, size*0.2));
+    });
+    updateLegend('vectorLegend', 0, maxMag, palette);
+}
+
+function updateLegend(id, min, max, paletteName) {
+    const el = document.getElementById(id);
+    const palette = [...PALETTES[paletteName]];
+    const grad = palette.map((p, i) => `#${new THREE.Color(p[1]).getHexString()} ${(i/(palette.length-1))*100}%`).join(',');
+    el.className = "absolute top-4 right-4 z-20 adaptive-legend p-2 rounded-xl flex items-center gap-3 shadow-lg transition-colors";
+    el.innerHTML = `<span class="text-[11px] font-black">${min === Infinity ? 0 : min.toFixed(1)}</span><div class="w-20 h-2.5 rounded-full border border-black/10" style="background:linear-gradient(to right, ${grad})"></div><span class="text-[11px] font-black">${max === -Infinity ? 0 : max.toFixed(1)}</span>`;
+}
+
+function updateLabels(type) {
+    const container = document.getElementById(type + 'Cont');
+    const camera = cameras[type];
+    if (!container || !camera) return;
+    let yLabelText = "Z"; 
+    if (type === 'scalar') {
+        const expr = document.getElementById("scalar").value;
+        const hasY = expr.includes('y'), hasZ = expr.includes('z');
+        if (!hasY && !hasZ) yLabelText = "f(x)";
+        else if (!hasZ) yLabelText = "f(x,y)";
+    }
+    const labels = [{ id: type + '-lx', pos: [5, 0, 0], txt: 'X', col: '#ef4444' }, { id: type + '-ly', pos: [0, 5, 0], txt: yLabelText, col: '#10b981' }, { id: type + '-lz', pos: [0, 0, 5], txt: 'Y', col: '#3b82f6' }];
+    labels.forEach(l => {
+        let el = document.getElementById(l.id);
+        if (!el) { el = document.createElement('div'); el.id = l.id; el.className = 'absolute pointer-events-none axis-label z-50 transition-colors'; container.appendChild(el); }
+        const vec = new THREE.Vector3(...l.pos).project(camera);
+        if (vec.z > 1) { el.style.display = 'none'; return; }
+        el.style.display = 'block';
+        el.style.left = `${(vec.x + 1) * container.clientWidth / 2}px`;
+        el.style.top = `${-(vec.y - 1) * container.clientHeight / 2}px`;
+        el.style.color = l.col;
+        el.style.borderColor = l.col;
+        el.style.backgroundColor = isDarkMode ? '#1e293b' : '#ffffff';
+        el.innerText = l.txt;
+    });
+}
+
+function toggleFullScreen(id) {
+    const el = document.getElementById(id);
+    el.classList.toggle('fullscreen-mode');
+    setTimeout(() => {
+        const k = id.includes('scalar') ? 'scalar' : 'vector';
+        const plot = document.getElementById(k + 'Plot');
+        cameras[k].aspect = plot.clientWidth / plot.clientHeight;
+        cameras[k].updateProjectionMatrix();
+        renderers[k].setSize(plot.clientWidth, plot.clientHeight);
+    }, 200);
+}
+
+function updatePlot() {
+    document.getElementById('densityVal').innerText = document.getElementById('density').value;
+    document.getElementById('arrowSizeVal').innerText = document.getElementById('arrowSize').value;
+    document.getElementById('markerSizeVal').innerText = document.getElementById('markerSize').value;
+    renderScalar(); renderVector();
+}
+
+function animate() {
+    requestAnimationFrame(animate);
+    ['scalar', 'vector'].forEach(k => {
+        if(controls[k]) controls[k].update();
+        if(renderers[k]) renderers[k].render(scenes[k], cameras[k]);
+        updateLabels(k);
+    });
+}
 
 function toggleDarkMode() {
     isDarkMode = !isDarkMode;
     document.body.classList.toggle('dark-mode');
-    document.getElementById('themeBtn').innerText = isDarkMode ? '☀️' : '🌙';
-    plot();
+    ['scalar', 'vector'].forEach(k => scenes[k].background.setHex(isDarkMode ? 0x0f172a : 0xffffff));
 }
 
-function showLoader(show) {
-    const loader = document.getElementById('loader');
-    if (loader) loader.style.opacity = show ? '1' : '0';
-}
-
-function toggleFS(id) {
-    document.getElementById(id).classList.toggle('fullscreen-active');
-    setTimeout(() => { 
-        Plotly.Plots.resize('scalarPlot'); 
-        Plotly.Plots.resize('vectorPlot'); 
-    }, 100);
-}
-
-function linspace(a, b, n) {
-    let arr = [], s = (b - a) / (n - 1);
-    for (let i = 0; i < n; i++) arr.push(a + i * s);
-    return arr;
-}
-
-function getVars(expr) {
-    let vars = new Set();
-    let s = expr.toLowerCase();
-    if (s.includes("x")) vars.add("x");
-    if (s.includes("y")) vars.add("y");
-    if (s.includes("z")) vars.add("z");
-    return vars;
-}
-
-function plot() {
-    showLoader(true);
-    setTimeout(() => {
-        try {
-            let f = document.getElementById("scalar").value.trim();
-            let v = document.getElementById("vector").value.trim();
-            let bg = isDarkMode ? "#0f172a" : "#ffffff";
-            let txt = isDarkMode ? "#f8fafc" : "#1e293b";
-
-            let scaleName = document.getElementById("colorScale").value;
-            let colorScale = REVERSED_SCALES[scaleName] || REVERSED_SCALES.Viridis;
-
-            plotScalar(f, bg, txt, colorScale);
-            plotVector(v, bg, txt, colorScale);
-        } catch (e) {
-            console.error(e);
-        }
-        showLoader(false);
-    }, 50);
-}
-
-function plotScalar(expr, bg, txt, colorScale) {
-    const vars = getVars(expr);
-    let layout = {
-        autosize:true, paper_bgcolor:bg, plot_bgcolor:bg, font:{color:txt},
-        margin:{t:20,b:20,l:20,r:20}, uirevision:'true'
-    };
-
-    if (vars.size <= 1) {
-        let x = linspace(scalar1DBounds.x[0], scalar1DBounds.x[1], 500);
-        let y = x.map(v=>{try{return math.evaluate(expr,{x:v})}catch(e){return 0}});
-        Plotly.react("scalarPlot",[{x,y,type:'scatter',mode:'lines',line:{color:'#6366f1',width:3}}],
-        {...layout,xaxis:{range:scalar1DBounds.x,autorange:false,color:txt},yaxis:{color:txt}});
-        attach1DListener("scalarPlot","scalar");
-
-    } else if (vars.has("z")) {
-        let X=[],Y=[],Z=[],C=[];
-        let r=linspace(-5,5,12);
-        r.forEach(x=>r.forEach(y=>r.forEach(z=>{
-            try{let v=math.evaluate(expr,{x,y,z});X.push(x);Y.push(y);Z.push(z);C.push(v);}catch(e){}
-        })));
-        Plotly.react("scalarPlot",[{
-            type:'scatter3d',x:X,y:Y,z:Z,mode:'markers',
-            marker:{size:3,color:C,colorscale:colorScale,showscale:true,opacity:0.8}
-        }],{...layout,scene:{aspectmode:'cube',xaxis:{color:txt},yaxis:{color:txt},zaxis:{color:txt}}});
-
-    } else {
-        let x=linspace(-5,5,40),y=linspace(-5,5,40),Z=[];
-        for(let i=0;i<y.length;i++){
-            let row=[];
-            for(let j=0;j<x.length;j++){
-                try{row.push(math.evaluate(expr,{x:x[j],y:y[i]}));}catch(e){row.push(0);}
-            }
-            Z.push(row);
-        }
-        Plotly.react("scalarPlot",[{
-            type:"surface",x,y,z:Z,colorscale:colorScale,showscale:true
-        }],{...layout,scene:{aspectmode:'cube',xaxis:{color:txt},yaxis:{color:txt},zaxis:{color:txt}}});
-    }
-}
-
-function plotVector(expr, bg, txt, colorScale) {
-    let parts = expr.replace(/[\[\]\s]/g,"").split(",");
-    let density = parseInt(document.getElementById("density").value);
-
-    let layout = {autosize:true,paper_bgcolor:bg,plot_bgcolor:bg,font:{color:txt},
-        margin:{t:20,b:20,l:20,r:20},uirevision:'true'};
-
-    if (parts.length===1) {
-        let x=linspace(vector1DBounds.x[0],vector1DBounds.x[1],density*3);
-        let u=x.map(v=>{try{return math.evaluate(parts[0],{x:v})}catch(e){return 0}});
-        Plotly.react("vectorPlot",[{
-            type:'scatter',x,y:x.map(()=>0),mode:'markers',
-            marker:{symbol:'arrow-bar-up',angle:u.map(v=>v>=0?90:270),size:15,color:u.map(Math.abs),colorscale:colorScale,showscale:true}
-        }],{...layout,xaxis:{range:vector1DBounds.x,autorange:false,color:txt},yaxis:{visible:false}});
-        attach1DListener("vectorPlot","vector");
-
-    } else {
-        let is3D=parts.length===3;
-        let n=is3D?Math.floor(density/1.2):density*2;
-        let gx=linspace(-5,5,n),gy=linspace(-5,5,n),gz=is3D?linspace(-5,5,n):[0];
-        let X=[],Y=[],Z=[],U=[],V=[],W=[],M=[];
-        for(let x of gx)for(let y of gy)for(let z of gz){
-            try{
-                let s=is3D?{x,y,z}:{x,y};
-                let u=math.evaluate(parts[0],s),v=math.evaluate(parts[1],s),w=is3D?math.evaluate(parts[2],s):0;
-                X.push(x);Y.push(y);Z.push(z);U.push(u);V.push(v);W.push(w);M.push(Math.sqrt(u*u+v*v+w*w));
-            }catch(e){}
-        }
-        Plotly.react("vectorPlot",[{
-            type:"cone",x:X,y:Y,z:Z,u:U,v:V,w:W,intensity:M,
-            colorscale:colorScale,sizemode:"scaled",sizeref:0.5,showscale:true
-        }],{...layout,scene:{aspectmode:'cube',xaxis:{color:txt},yaxis:{color:txt},zaxis:{color:txt}}});
-    }
-}
-
-function attach1DListener(id,type){
-    const el=document.getElementById(id);
-    el.removeAllListeners('plotly_relayout');
-    el.on('plotly_relayout',ed=>{
-        if(ed['xaxis.range[0]']!==undefined){
-            if(type==="scalar") scalar1DBounds.x=[ed['xaxis.range[0]'],ed['xaxis.range[1]']];
-            else vector1DBounds.x=[ed['xaxis.range[0]'],ed['xaxis.range[1]']];
-            plot();
-        }
+window.onload = () => {
+    initWorld('scalarPlot', 'scalar');
+    initWorld('vectorPlot', 'vector');
+    ['density', 'arrowSize', 'markerSize', 'colorScale', 'scalar', 'vector'].forEach(id => {
+        document.getElementById(id).addEventListener('input', updatePlot);
     });
-}
-
-window.onload = plot;
-window.onresize = ()=>{Plotly.Plots.resize("scalarPlot");Plotly.Plots.resize("vectorPlot");};
-
+    animate(); updatePlot();
+};
