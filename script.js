@@ -13,6 +13,8 @@ const PALETTES = {
     Sunset: [[0, 0xffd200], [1, 0xf7971e]]
 };
 
+// --- Core Initialization ---
+
 function getColor(t, scaleName) {
     const palette = PALETTES[scaleName] || PALETTES.Viridis;
     const rt = Math.max(0, Math.min(1, t));
@@ -44,6 +46,8 @@ function initWorld(containerId, type) {
     scene.add(groups[type]);
     scenes[type] = scene; cameras[type] = camera; renderers[type] = renderer; controls[type] = orbit;
 }
+
+// --- Scalar Rendering ---
 
 function renderScalar() {
     groups.scalar.clear();
@@ -90,11 +94,9 @@ function renderScalar() {
             geo.computeVertexNormals();
             groups.scalar.add(new THREE.Mesh(geo, new THREE.MeshPhongMaterial({vertexColors:true, side:THREE.DoubleSide})));
         } else {
-            // 3D Logic: Scientific Instanced Spheres with 0.45 Opacity
             const dens = 14; 
             const step = (range*2)/dens;
             const data = [];
-            
             for(let x=-range; x<=range; x+=step)
                 for(let y=-range; y<=range; y+=step)
                     for(let z=-range; z<=range; z+=step) {
@@ -102,17 +104,8 @@ function renderScalar() {
                         minV = Math.min(minV, v); maxV = Math.max(maxV, v);
                         data.push({x, y, z, v});
                     }
-
             const sphereGeo = new THREE.SphereGeometry(dotSize, 12, 12);
-            
-            const sphereMat = new THREE.MeshPhongMaterial({
-                transparent: true,
-                opacity: 0.45,      // <--- SET TO 0.45 AS REQUESTED
-                depthWrite: false,   
-                shininess: 120,     
-                specular: 0x555555  
-            });
-
+            const sphereMat = new THREE.MeshPhongMaterial({ transparent: true, opacity: 0.45, depthWrite: false, shininess: 120, specular: 0x555555 });
             const instancedMesh = new THREE.InstancedMesh(sphereGeo, sphereMat, data.length);
             const matrix = new THREE.Matrix4();
             data.forEach((d, i) => {
@@ -127,7 +120,7 @@ function renderScalar() {
     updateLegend('scalarLegend', minV, maxV, palette);
 }
 
-// ... rest of the code (renderVector, updateLegend, updateLabels, etc.) remains identical to previous version ...
+// --- Vector Rendering ---
 
 function renderVector() {
     groups.vector.clear();
@@ -159,6 +152,8 @@ function renderVector() {
     });
     updateLegend('vectorLegend', 0, maxMag, palette);
 }
+
+// --- UI & Helpers ---
 
 function updateLegend(id, min, max, paletteName) {
     const el = document.getElementById(id);
@@ -211,6 +206,9 @@ function updatePlot() {
     document.getElementById('densityVal').innerText = document.getElementById('density').value;
     document.getElementById('arrowSizeVal').innerText = document.getElementById('arrowSize').value;
     document.getElementById('markerSizeVal').innerText = document.getElementById('markerSize').value;
+    if(document.getElementById('flowSpeedVal')) {
+        document.getElementById('flowSpeedVal').innerText = document.getElementById('flowSpeed').value;
+    }
     renderScalar(); renderVector();
 }
 
@@ -221,6 +219,7 @@ function animate() {
         if(renderers[k]) renderers[k].render(scenes[k], cameras[k]);
         updateLabels(k);
     });
+    updateParticles(); // Particle animation hook
 }
 
 function toggleDarkMode() {
@@ -229,16 +228,7 @@ function toggleDarkMode() {
     ['scalar', 'vector'].forEach(k => scenes[k].background.setHex(isDarkMode ? 0x0f172a : 0xffffff));
 }
 
-window.onload = () => {
-    initWorld('scalarPlot', 'scalar');
-    initWorld('vectorPlot', 'vector');
-    ['density', 'arrowSize', 'markerSize', 'colorScale', 'scalar', 'vector'].forEach(id => {
-        document.getElementById(id).addEventListener('input', updatePlot);
-    });
-    animate(); updatePlot();
-};
-
-
+// --- Particle Flow Logic ---
 
 let isFlowing = false;
 let particleGroup = new THREE.Group();
@@ -250,7 +240,6 @@ function initParticles() {
     scenes.vector.add(particleGroup);
     const pGeo = new THREE.SphereGeometry(0.04, 6, 6);
     const pMat = new THREE.MeshBasicMaterial({ color: 0x6366f1, transparent: true, opacity: 0.8 });
-
     for (let i = 0; i < MAX_PARTICLES; i++) {
         const mesh = new THREE.Mesh(pGeo, pMat.clone());
         resetParticle(mesh);
@@ -261,92 +250,75 @@ function initParticles() {
 
 function resetParticle(p) {
     const range = 4;
-    p.position.set(
-        (Math.random() - 0.5) * range * 2,
-        (Math.random() - 0.5) * range * 2,
-        (Math.random() - 0.5) * range * 2
-    );
+    p.position.set((Math.random() - 0.5) * range * 2, (Math.random() - 0.5) * range * 2, (Math.random() - 0.5) * range * 2);
     p.life = Math.random() * 60 + 40;
 }
 
 function updateParticles() {
     if (!isFlowing) return;
-
     const expr = document.getElementById("vector").value;
     const parts = expr.replace(/[\[\]\s]/g, "").split(",");
     const dof = parts.length;
+    const speedMultiplier = parseFloat(document.getElementById('flowSpeed')?.value || 1.0) * 0.02;
 
     particles.forEach(p => {
         try {
-            // 1. Dynamic Color Gradients based on Theme
             const lifeRatio = p.life / 100;
-            let pColor;
-
-            if (isDarkMode) {
-                // Dark Mode: Silver to Dark Grey Gradient
-                // Lighter (Silver) when young, Darker Grey when old
-                pColor = new THREE.Color().lerpColors(
-                    new THREE.Color(0x475569), // Slate Grey
-                    new THREE.Color(0xf8fafc), // Ghost White/Silver
-                    lifeRatio
-                );
-            } else {
-                // Light Mode: Deep Indigo to Slate Blue
-                // Darker colors to ensure visibility on light background
-                pColor = new THREE.Color().lerpColors(
-                    new THREE.Color(0x1e293b), // Deep Slate
-                    new THREE.Color(0x4f46e5), // Vibrant Indigo
-                    lifeRatio
-                );
-            }
+            let pColor = isDarkMode ? 
+                new THREE.Color().lerpColors(new THREE.Color(0x475569), new THREE.Color(0xf8fafc), lifeRatio) : 
+                new THREE.Color().lerpColors(new THREE.Color(0x1e293b), new THREE.Color(0x4f46e5), lifeRatio);
             p.material.color.copy(pColor);
 
-            // 2. Movement Logic (DoF)
             const scope = { x: p.position.x, y: p.position.z, z: p.position.y };
             let vx = math.evaluate(parts[0] || "0", scope);
             let vy = dof > 1 ? math.evaluate(parts[1], scope) : 0;
             let vz = dof > 2 ? math.evaluate(parts[2], scope) : 0;
 
-            p.position.x += vx * 0.02;
-            if (dof > 1) p.position.z += vy * 0.02;
-            if (dof > 2) p.position.y += vz * 0.02;
+            p.position.x += vx * speedMultiplier;
+            if (dof > 1) p.position.z += vy * speedMultiplier;
+            if (dof > 2) p.position.y += vz * speedMultiplier;
 
-            // Constrain Dimensions
             if (dof === 1) { p.position.z = 0; p.position.y = 0; }
             if (dof === 2) { p.position.y = 0; }
 
-            // 3. Life and Fade
             p.life--;
             p.material.opacity = lifeRatio * (isDarkMode ? 0.8 : 0.9);
-
-            if (p.life <= 0 || Math.abs(p.position.x) > 5 || Math.abs(p.position.y) > 5 || Math.abs(p.position.z) > 5) {
-                resetParticle(p);
-            }
+            if (p.life <= 0 || Math.abs(p.position.x) > 5 || Math.abs(p.position.y) > 5 || Math.abs(p.position.z) > 5) resetParticle(p);
         } catch (e) { p.life = 0; }
     });
 }
-// Hook into existing animate loop
-const originalAnimate = animate;
-animate = function() {
-    originalAnimate();
-    updateParticles();
-};
 
-// Event Listener for the UI button
-document.getElementById('flowToggle').addEventListener('click', function() {
-    isFlowing = !isFlowing;
-    this.innerText = isFlowing ? "🛑 FLOW: ON" : "✨ FLOW: OFF";
+// --- Initialization & Event Listeners ---
+
+window.onload = () => {
+    initWorld('scalarPlot', 'scalar');
+    initWorld('vectorPlot', 'vector');
     
-    if (isFlowing) {
-        // High contrast when active
-        this.style.backgroundColor = isDarkMode ? "#f8fafc" : "#1e293b";
-        this.style.color = isDarkMode ? "#0f172a" : "#ffffff";
-    } else {
-        // Subtle glassmorphism when inactive
-        this.style.backgroundColor = "rgba(0, 0, 0, 0.4)";
-        this.style.color = "#ffffff";
+    const inputs = ['density', 'arrowSize', 'markerSize', 'colorScale', 'scalar', 'vector'];
+    if(document.getElementById('flowSpeed')) inputs.push('flowSpeed');
+    
+    inputs.forEach(id => {
+        const el = document.getElementById(id);
+        if(el) el.addEventListener('input', updatePlot);
+    });
+
+    const flowBtn = document.getElementById('flowToggle');
+    if(flowBtn) {
+        flowBtn.addEventListener('click', function() {
+            isFlowing = !isFlowing;
+            this.innerText = isFlowing ? "🛑 FLOW: ON" : "✨ FLOW: OFF";
+            if (isFlowing) {
+                this.style.backgroundColor = isDarkMode ? "#f8fafc" : "#1e293b";
+                this.style.color = isDarkMode ? "#0f172a" : "#ffffff";
+                initParticles();
+            } else {
+                this.style.backgroundColor = "rgba(0, 0, 0, 0.4)";
+                this.style.color = "#ffffff";
+            }
+            particleGroup.visible = isFlowing;
+        });
     }
-    
-    if (isFlowing) initParticles();
-    particleGroup.visible = isFlowing;
-});
+
+    animate(); 
+    updatePlot();
+};
