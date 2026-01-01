@@ -225,9 +225,18 @@ function animate() {
 function toggleDarkMode() {
     isDarkMode = !isDarkMode;
     document.body.classList.toggle('dark-mode');
-    ['scalar', 'vector'].forEach(k => scenes[k].background.setHex(isDarkMode ? 0x0f172a : 0xffffff));
-}
+    
+    // Update the button icon
+    const themeBtn = document.getElementById('themeBtn');
+    themeBtn.innerText = isDarkMode ? "☀️" : "🌙";
 
+    // Update the scene background colors
+    ['scalar', 'vector'].forEach(k => {
+        if (scenes[k]) {
+            scenes[k].background.setHex(isDarkMode ? 0x0f172a : 0xffffff);
+        }
+    });
+}
 // --- Particle Flow Logic ---
 
 let isFlowing = false;
@@ -322,3 +331,4 @@ window.onload = () => {
     animate(); 
     updatePlot();
 };
+
