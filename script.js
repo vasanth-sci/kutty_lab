@@ -9,7 +9,8 @@ let manualParticles = [];
 const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2();
 
-let streamlines = []; // To store the line objects
+// Streamlines for manual particles (lines showing traced paths)
+let streamlines = [];
 
 
 
@@ -34,7 +35,7 @@ const PALETTES = {
     Sunset: [[0, 0xffd200], [1, 0xf7971e]]
 };
 
-// --- Core Initialization ---
+// Core setup: scenes, cameras, renderers, controls
 
 function getColor(t, scaleName) {
     const palette = PALETTES[scaleName] || PALETTES.Viridis;
@@ -68,7 +69,7 @@ function initWorld(containerId, type) {
     scenes[type] = scene; cameras[type] = camera; renderers[type] = renderer; controls[type] = orbit;
 }
 
-// --- Scalar Rendering ---
+// Scalar field rendering (1D line, 2D surface, or 3D scatter)
 
 function renderScalar() {
     groups.scalar.clear();
@@ -76,7 +77,7 @@ function renderScalar() {
     const palette = document.getElementById("colorScale").value;
     const dotSize = parseFloat(document.getElementById("markerSize").value);
     
-    // ADDED: Marker Density for 3D Scatter
+    // Marker density for 3D scatter
     const mDensInput = document.getElementById("markerDensity");
     const scatterDens = mDensInput ? parseInt(mDensInput.value) : 25;
 
@@ -120,8 +121,7 @@ function renderScalar() {
             geo.computeVertexNormals();
             groups.scalar.add(new THREE.Mesh(geo, new THREE.MeshPhongMaterial({vertexColors:true, side:THREE.DoubleSide})));
         } else {
-            // --- FIXED HIGH-PERFORMANCE 3D PLOT ---
-            // MODIFIED: Uses dynamic density slider
+            // 3D scatter plot using marker density slider
             const step = (range * 2) / scatterDens; 
             const positions = [];
             const rawValues = [];
@@ -133,9 +133,8 @@ function renderScalar() {
                         minV = Math.min(minV, v);
                         maxV = Math.max(maxV, v);
                         
-                        // AXIS FIX: Maps Math Z to Three.js Y (Vertical)
-                        // Maps Math Y to Three.js Z (Depth)
-                        positions.push(x, z, -y); 
+                                    // Map math coordinates to Three.js: (x, z, -y)
+                        positions.push(x, z, -y);
                         rawValues.push(v);
                     }
                 }
@@ -151,13 +150,13 @@ function renderScalar() {
             geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
             geo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
 
-            // MATLAB STYLE: Sharp, opaque circles
+            // Points material: textured sprites with per-point colors
             const pointsMat = new THREE.PointsMaterial({
                 size: dotSize,
                 map: pointTexture,
                 vertexColors: true,
                 transparent: true,
-                alphaTest: 0.5, // This removes the "blurry" edges
+                alphaTest: 0.5,
                 sizeAttenuation: true
             });
 
@@ -167,6 +166,7 @@ function renderScalar() {
     updateLegend('scalarLegend', minV, maxV, palette);
 }
 
+// Vector field rendering: arrows on a grid
 function renderVector() {
     groups.vector.clear();
     const expr = document.getElementById("vector").value;
@@ -185,7 +185,8 @@ function renderVector() {
                     const w = parts.length > 2 ? math.evaluate(parts[2], {x,y,z}) : 0;
                     const mag = Math.sqrt(u*u + v*v + w*w);
                     maxMag = Math.max(maxMag, mag);
-                    // Match the Scalar axis mapping: Math Z -> Three Y, Math Y -> Three Z
+                    // Keep math -> Three.js axis mapping consistent with scalar renderer
+                    // (stored so plotting and particle advection align)
                     vectors.push({x, y: z, z: y, u, v: w, w: v, mag});
                 } catch(e){}
             }
@@ -202,7 +203,7 @@ function renderVector() {
 
 
 
-// --- UI & Helpers ---
+// UI helpers and DOM bindings
 
 function updateLegend(id, min, max, paletteName) {
     const el = document.getElementById(id);
@@ -296,7 +297,7 @@ function animate() {
         if(renderers[k]) renderers[k].render(scenes[k], cameras[k]);
         updateLabels(k);
     });
-    updateParticles(); // Particle animation hook
+    updateParticles(); // Animate particles and update any traces
 }
 
 function toggleDarkMode() {
@@ -314,7 +315,7 @@ function toggleDarkMode() {
         }
     });
 }
-// --- Particle Flow Logic ---
+// Particle flow: automated particle clouds + user-dropped particles
 
 let isFlowing = false;
 let particleGroup = new THREE.Group();
@@ -348,7 +349,7 @@ function updateParticles() {
     const dof = parts.length;
     const h = parseFloat(document.getElementById('flowSpeed')?.value || 1.0) * 0.02; // Time step
 
-    // 1. Update Automated Flow Particles
+    // Update automated flow particles (if bulk flow is enabled)
     if (isFlowing) {
         particles.forEach(p => {
             try {
@@ -358,19 +359,16 @@ function updateParticles() {
                     new THREE.Color().lerpColors(new THREE.Color(0x1e293b), new THREE.Color(0x4f46e5), lifeRatio);
                 p.material.color.copy(pColor);
 
-                // --- MIDPOINT FIX START ---
-                // Step 1: Get velocity at current position
+                // Midpoint (RK2) integration for smoother advection
                 let scope1 = { x: p.position.x, y: p.position.z, z: p.position.y };
                 let vx1 = math.evaluate(parts[0] || "0", scope1);
                 let vy1 = dof > 1 ? math.evaluate(parts[1], scope1) : 0;
                 let vz1 = dof > 2 ? math.evaluate(parts[2], scope1) : 0;
 
-                // Step 2: Calculate midpoint
                 let midX = p.position.x + vx1 * (h / 2);
                 let midY = p.position.z + vy1 * (h / 2);
                 let midZ = p.position.y + vz1 * (h / 2);
 
-                // Step 3: Get velocity at midpoint and apply
                 let scope2 = { x: midX, y: midY, z: midZ };
                 let vx2 = math.evaluate(parts[0] || "0", scope2);
                 let vy2 = dof > 1 ? math.evaluate(parts[1], scope2) : 0;
@@ -379,7 +377,6 @@ function updateParticles() {
                 p.position.x += vx2 * h;
                 if (dof > 1) p.position.z += vy2 * h;
                 if (dof > 2) p.position.y += vz2 * h;
-                // --- MIDPOINT FIX END ---
 
                 if (dof === 1) { p.position.z = 0; p.position.y = 0; }
                 if (dof === 2) { p.position.y = 0; }
@@ -394,7 +391,7 @@ function updateParticles() {
         });
     }
 
-    // 2. Update Manual Particles (Midpoint logic applied here as well)
+    // Update manual particles (also using midpoint integration)
     manualParticles.forEach((p) => {
         try {
             let scope1 = { x: p.position.x, y: p.position.z, z: p.position.y };
@@ -415,10 +412,11 @@ function updateParticles() {
             if (parts.length > 1) p.position.z += vy2 * h;
             if (parts.length > 2) p.position.y += vz2 * h;
 
-           if (p.streamline && p.pathPoints.length < 500) { // Limit length for performance
-            p.pathPoints.push(p.position.clone());
-            p.streamline.geometry.setFromPoints(p.pathPoints);
-        }
+         if (p.streamline && p.pathPoints.length < 500) {
+             // Append new point to the particle's trace and update the line geometry
+             p.pathPoints.push(p.position.clone());
+             p.streamline.geometry.setFromPoints(p.pathPoints);
+         }
 
 
            
@@ -429,7 +427,7 @@ function updateParticles() {
 function spawnManualParticle(x, y, z) {
     const isTraceEnabled = document.getElementById('enableTrace').checked;
     
-    // 1. Create the Particle Mesh
+    // Create the particle mesh at the requested coordinates
     const pGeo = new THREE.SphereGeometry(0.12, 12, 12);
     const pMat = new THREE.MeshPhongMaterial({ 
         color: isTraceEnabled ? 0x6366f1 : 0xff3366, 
@@ -437,9 +435,10 @@ function spawnManualParticle(x, y, z) {
         emissiveIntensity: 0.5 
     });
     const mesh = new THREE.Mesh(pGeo, pMat);
-    mesh.position.set(x, z, y); 
+    // Note: coordinate mapping aligns with visualization convention (x, z, y)
+    mesh.position.set(x, z, y);
     
-    // 2. Initialize Streamline if checked
+    // Initialize a streamline (trace) if tracing is enabled
     if (isTraceEnabled) {
         const lineMat = new THREE.LineBasicMaterial({ color: 0x6366f1, transparent: true, opacity: 0.6 });
         const lineGeo = new THREE.BufferGeometry().setFromPoints([mesh.position.clone()]);
@@ -481,6 +480,24 @@ function handleVectorClick(event) {
         spawnManualParticle(intersectPoint.x, intersectPoint.z, intersectPoint.y);
     }
 }
+
+
+
+function toggleModal() {
+    const modal = document.getElementById('infoModal');
+    modal.classList.toggle('hidden');
+}
+
+// Close modal if user clicks outside the box
+window.onclick = function(event) {
+    const modal = document.getElementById('infoModal');
+    if (event.target == modal) {
+        modal.classList.add('hidden');
+    }
+}
+
+
+
 
 
 
