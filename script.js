@@ -344,32 +344,45 @@ function updateParticles() {
     const expr = document.getElementById("vector").value;
     const parts = expr.replace(/[\[\]\s]/g, "").split(",");
     const dof = parts.length;
-    const speedMultiplier = parseFloat(document.getElementById('flowSpeed')?.value || 1.0) * 0.02;
+    const h = parseFloat(document.getElementById('flowSpeed')?.value || 1.0) * 0.02; // Time step
 
-    // 1. Update Automated Flow Particles (Keeps original theme-based colors)
+    // 1. Update Automated Flow Particles
     if (isFlowing) {
         particles.forEach(p => {
             try {
-                // Restore theme-based color logic
                 const lifeRatio = p.life / 100;
                 let pColor = isDarkMode ? 
                     new THREE.Color().lerpColors(new THREE.Color(0x475569), new THREE.Color(0xf8fafc), lifeRatio) : 
                     new THREE.Color().lerpColors(new THREE.Color(0x1e293b), new THREE.Color(0x4f46e5), lifeRatio);
                 p.material.color.copy(pColor);
 
-                const scope = { x: p.position.x, y: p.position.z, z: p.position.y };
-                let vx = math.evaluate(parts[0] || "0", scope);
-                let vy = dof > 1 ? math.evaluate(parts[1], scope) : 0;
-                let vz = dof > 2 ? math.evaluate(parts[2], scope) : 0;
+                // --- MIDPOINT FIX START ---
+                // Step 1: Get velocity at current position
+                let scope1 = { x: p.position.x, y: p.position.z, z: p.position.y };
+                let vx1 = math.evaluate(parts[0] || "0", scope1);
+                let vy1 = dof > 1 ? math.evaluate(parts[1], scope1) : 0;
+                let vz1 = dof > 2 ? math.evaluate(parts[2], scope1) : 0;
 
-                p.position.x += vx * speedMultiplier;
-                if (dof > 1) p.position.z += vy * speedMultiplier;
-                if (dof > 2) p.position.y += vz * speedMultiplier;
+                // Step 2: Calculate midpoint
+                let midX = p.position.x + vx1 * (h / 2);
+                let midY = p.position.z + vy1 * (h / 2);
+                let midZ = p.position.y + vz1 * (h / 2);
+
+                // Step 3: Get velocity at midpoint and apply
+                let scope2 = { x: midX, y: midY, z: midZ };
+                let vx2 = math.evaluate(parts[0] || "0", scope2);
+                let vy2 = dof > 1 ? math.evaluate(parts[1], scope2) : 0;
+                let vz2 = dof > 2 ? math.evaluate(parts[2], scope2) : 0;
+
+                p.position.x += vx2 * h;
+                if (dof > 1) p.position.z += vy2 * h;
+                if (dof > 2) p.position.y += vz2 * h;
+                // --- MIDPOINT FIX END ---
 
                 if (dof === 1) { p.position.z = 0; p.position.y = 0; }
                 if (dof === 2) { p.position.y = 0; }
 
-                p.life--; // Automated particles still need life to cycle/reset
+                p.life--;
                 p.material.opacity = lifeRatio * (isDarkMode ? 0.8 : 0.9);
 
                 if (p.life <= 0 || Math.abs(p.position.x) > 5 || Math.abs(p.position.y) > 5 || Math.abs(p.position.z) > 5) {
@@ -379,19 +392,26 @@ function updateParticles() {
         });
     }
 
-    // 2. Update Manual Particles (Permanent - No lifetime removal)
+    // 2. Update Manual Particles (Midpoint logic applied here as well)
     manualParticles.forEach((p) => {
         try {
-            const scope = { x: p.position.x, y: p.position.z, z: p.position.y };
-            let vx = math.evaluate(parts[0] || "0", scope);
-            let vy = parts.length > 1 ? math.evaluate(parts[1], scope) : 0;
-            let vz = parts.length > 2 ? math.evaluate(parts[2], scope) : 0;
+            let scope1 = { x: p.position.x, y: p.position.z, z: p.position.y };
+            let vx1 = math.evaluate(parts[0] || "0", scope1);
+            let vy1 = parts.length > 1 ? math.evaluate(parts[1], scope1) : 0;
+            let vz1 = parts.length > 2 ? math.evaluate(parts[2], scope1) : 0;
 
-            p.position.x += vx * speedMultiplier;
-            if (parts.length > 1) p.position.z += vy * speedMultiplier;
-            if (parts.length > 2) p.position.y += vz * speedMultiplier;
-            
-            // Note: Removal logic and life decrement have been removed
+            let midX = p.position.x + vx1 * (h / 2);
+            let midY = p.position.z + vy1 * (h / 2);
+            let midZ = p.position.y + vz1 * (h / 2);
+
+            let scope2 = { x: midX, y: midY, z: midZ };
+            let vx2 = math.evaluate(parts[0] || "0", scope2);
+            let vy2 = parts.length > 1 ? math.evaluate(parts[1], scope2) : 0;
+            let vz2 = parts.length > 2 ? math.evaluate(parts[2], scope2) : 0;
+
+            p.position.x += vx2 * h;
+            if (parts.length > 1) p.position.z += vy2 * h;
+            if (parts.length > 2) p.position.y += vz2 * h;
         } catch (e) { }
     });
 }
@@ -494,4 +514,5 @@ document.getElementById('clearManualBtn').addEventListener('click', () => {
     animate(); 
     updatePlot();
 };
+
 
