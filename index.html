@@ -16,6 +16,15 @@
             width: 100vw !important; height: 100vh !important;
             z-index: 100 !important; border-radius: 0 !important; margin: 0 !important;
         }
+        /* Chat UI */
+        #chatToggle { position: fixed; right: 20px; bottom: 20px; z-index:120; }
+        #chatPanel { position: fixed; right: 20px; bottom: 80px; width: 320px; max-height: 60vh; z-index:120; display:none; }
+        #chatPanel .panel { background: white; border-radius: 12px; box-shadow: 0 8px 30px rgba(2,6,23,0.2); overflow: hidden; display:flex; flex-direction:column; height: 100%; }
+        #chatMessages { padding: 12px; overflow:auto; flex:1; }
+        #chatInput { display:flex; gap:8px; padding:10px; border-top:1px solid #eee; }
+        .chat-bubble { margin-bottom:8px; padding:8px 10px; border-radius:10px; display:inline-block; max-width:82%; }
+        .chat-user { background:#eef2ff; align-self:flex-end; }
+        .chat-bot { background:#f3f4f6; align-self:flex-start; }
     </style>
 </head>
 <body id="mainBody" class="bg-slate-50 text-slate-900 font-sans transition-colors duration-500 overflow-hidden">
@@ -139,6 +148,23 @@
 </div>
 <script src="script.js"></script>
 
+<!-- Chat UI -->
+<div id="chatPanel">
+    <div class="panel">
+        <div class="p-3 flex items-center justify-between border-b">
+            <strong>Dozer Chat</strong>
+            <button id="closeChat" class="text-sm">✖</button>
+        </div>
+        <div id="chatMessages"></div>
+        <div id="chatInput">
+            <input id="chatText" type="text" placeholder="Ask a question..." class="flex-1 p-2 rounded-lg border" />
+            <button id="sendChat" class="px-3 py-2 bg-indigo-600 text-white rounded-lg">Send</button>
+        </div>
+    </div>
+</div>
+
+<button id="chatToggle" class="p-3 rounded-full bg-indigo-600 text-white shadow-lg">💬</button>
+
 
 
 <div id="infoModal" class="hidden fixed inset-0 z-[200] flex items-center justify-center p-4">
@@ -239,4 +265,3 @@
 
 </body>
 </html>
-

@@ -1,4 +1,6 @@
 let isDarkMode = false;
+// API endpoint for chat proxy. Set `window.CHAT_API` in your HTML to point to a deployed proxy if needed.
+const CHAT_API = window.CHAT_API || '/api/chat';
 const scenes = { scalar: null, vector: null };
 const cameras = { scalar: null, vector: null };
 const renderers = { scalar: null, vector: null };
@@ -558,3 +560,58 @@ document.getElementById('clearManualBtn').addEventListener('click', () => {
     updatePlot();
 };
 
+// --- Chat UI Client ---
+function appendChatBubble(text, who='bot'){
+    const container = document.getElementById('chatMessages');
+    if(!container) return;
+    const div = document.createElement('div');
+    div.className = 'chat-bubble ' + (who === 'user' ? 'chat-user' : 'chat-bot');
+    div.innerText = text;
+    container.appendChild(div);
+    container.scrollTop = container.scrollHeight;
+}
+
+function setChatLoading(on){
+    const sendBtn = document.getElementById('sendChat');
+    if(!sendBtn) return;
+    sendBtn.disabled = on;
+    sendBtn.innerText = on ? '...' : 'Send';
+}
+
+async function sendChatMessage(){
+    const input = document.getElementById('chatText');
+    if(!input) return;
+    const txt = input.value.trim();
+    if(!txt) return;
+    appendChatBubble(txt, 'user');
+    input.value = '';
+    setChatLoading(true);
+    try{
+        const headers = { 'Content-Type': 'application/json' };
+        if (window.PROXY_TOKEN) headers['Authorization'] = 'Bearer ' + window.PROXY_TOKEN;
+        const res = await fetch(CHAT_API, { method: 'POST', headers, body: JSON.stringify({ message: txt }) });
+        if(!res.ok) throw new Error('Server error');
+        const data = await res.json();
+        appendChatBubble(data.reply || 'No reply', 'bot');
+    }catch(e){
+        appendChatBubble('Error: ' + (e.message||e), 'bot');
+    }finally{ setChatLoading(false); }
+}
+
+// Chat UI hooks
+document.addEventListener('click', (e) => {
+    if(e.target && e.target.id === 'chatToggle'){
+        const p = document.getElementById('chatPanel');
+        if(p) p.style.display = p.style.display === 'block' ? 'none' : 'block';
+    }
+    if(e.target && e.target.id === 'closeChat'){
+        const p = document.getElementById('chatPanel'); if(p) p.style.display = 'none';
+    }
+});
+
+document.addEventListener('DOMContentLoaded', () => {
+    const send = document.getElementById('sendChat');
+    const input = document.getElementById('chatText');
+    if(send) send.addEventListener('click', sendChatMessage);
+    if(input) input.addEventListener('keydown', (ev) => { if(ev.key === 'Enter') sendChatMessage(); });
+});
