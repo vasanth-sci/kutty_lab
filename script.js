@@ -484,6 +484,24 @@ function handleVectorClick(event) {
 
 
 
+function toggleModal() {
+    const modal = document.getElementById('infoModal');
+    modal.classList.toggle('hidden');
+}
+
+// Close modal if user clicks outside the box
+window.onclick = function(event) {
+    const modal = document.getElementById('infoModal');
+    if (event.target == modal) {
+        modal.classList.add('hidden');
+    }
+}
+
+
+
+
+
+
 // --- Initialization & Event Listeners ---
 
 window.onload = () => {
