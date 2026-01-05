@@ -5,6 +5,12 @@ const renderers = { scalar: null, vector: null };
 const controls = { scalar: null, vector: null };
 const groups = { scalar: new THREE.Group(), vector: new THREE.Group() };
 
+let manualParticles = [];
+const raycaster = new THREE.Raycaster();
+const mouse = new THREE.Vector2();
+
+
+
 
 const pointTexture = (() => {
     const canvas = document.createElement('canvas');
@@ -333,44 +339,124 @@ function resetParticle(p) {
 }
 
 function updateParticles() {
-    if (!isFlowing) return;
+    if (!isFlowing && manualParticles.length === 0) return;
+
     const expr = document.getElementById("vector").value;
     const parts = expr.replace(/[\[\]\s]/g, "").split(",");
     const dof = parts.length;
     const speedMultiplier = parseFloat(document.getElementById('flowSpeed')?.value || 1.0) * 0.02;
 
-    particles.forEach(p => {
-        try {
-            const lifeRatio = p.life / 100;
-            let pColor = isDarkMode ? 
-                new THREE.Color().lerpColors(new THREE.Color(0x475569), new THREE.Color(0xf8fafc), lifeRatio) : 
-                new THREE.Color().lerpColors(new THREE.Color(0x1e293b), new THREE.Color(0x4f46e5), lifeRatio);
-            p.material.color.copy(pColor);
+    // 1. Update Automated Flow Particles (Keeps original theme-based colors)
+    if (isFlowing) {
+        particles.forEach(p => {
+            try {
+                // Restore theme-based color logic
+                const lifeRatio = p.life / 100;
+                let pColor = isDarkMode ? 
+                    new THREE.Color().lerpColors(new THREE.Color(0x475569), new THREE.Color(0xf8fafc), lifeRatio) : 
+                    new THREE.Color().lerpColors(new THREE.Color(0x1e293b), new THREE.Color(0x4f46e5), lifeRatio);
+                p.material.color.copy(pColor);
 
+                const scope = { x: p.position.x, y: p.position.z, z: p.position.y };
+                let vx = math.evaluate(parts[0] || "0", scope);
+                let vy = dof > 1 ? math.evaluate(parts[1], scope) : 0;
+                let vz = dof > 2 ? math.evaluate(parts[2], scope) : 0;
+
+                p.position.x += vx * speedMultiplier;
+                if (dof > 1) p.position.z += vy * speedMultiplier;
+                if (dof > 2) p.position.y += vz * speedMultiplier;
+
+                if (dof === 1) { p.position.z = 0; p.position.y = 0; }
+                if (dof === 2) { p.position.y = 0; }
+
+                p.life--; // Automated particles still need life to cycle/reset
+                p.material.opacity = lifeRatio * (isDarkMode ? 0.8 : 0.9);
+
+                if (p.life <= 0 || Math.abs(p.position.x) > 5 || Math.abs(p.position.y) > 5 || Math.abs(p.position.z) > 5) {
+                    resetParticle(p);
+                }
+            } catch (e) { p.life = 0; }
+        });
+    }
+
+    // 2. Update Manual Particles (Permanent - No lifetime removal)
+    manualParticles.forEach((p) => {
+        try {
             const scope = { x: p.position.x, y: p.position.z, z: p.position.y };
             let vx = math.evaluate(parts[0] || "0", scope);
-            let vy = dof > 1 ? math.evaluate(parts[1], scope) : 0;
-            let vz = dof > 2 ? math.evaluate(parts[2], scope) : 0;
+            let vy = parts.length > 1 ? math.evaluate(parts[1], scope) : 0;
+            let vz = parts.length > 2 ? math.evaluate(parts[2], scope) : 0;
 
             p.position.x += vx * speedMultiplier;
-            if (dof > 1) p.position.z += vy * speedMultiplier;
-            if (dof > 2) p.position.y += vz * speedMultiplier;
-
-            if (dof === 1) { p.position.z = 0; p.position.y = 0; }
-            if (dof === 2) { p.position.y = 0; }
-
-            p.life--;
-            p.material.opacity = lifeRatio * (isDarkMode ? 0.8 : 0.9);
-            if (p.life <= 0 || Math.abs(p.position.x) > 5 || Math.abs(p.position.y) > 5 || Math.abs(p.position.z) > 5) resetParticle(p);
-        } catch (e) { p.life = 0; }
+            if (parts.length > 1) p.position.z += vy * speedMultiplier;
+            if (parts.length > 2) p.position.y += vz * speedMultiplier;
+            
+            // Note: Removal logic and life decrement have been removed
+        } catch (e) { }
     });
 }
+
+function spawnManualParticle(x, y, z) {
+    const pGeo = new THREE.SphereGeometry(0.12, 12, 12);
+    const pMat = new THREE.MeshPhongMaterial({ 
+        color: 0xff3366, 
+        emissive: 0xff0000, 
+        emissiveIntensity: 0.5 
+    });
+    const mesh = new THREE.Mesh(pGeo, pMat);
+    
+    mesh.position.set(x, z, y); 
+    // No life property assigned here
+    
+    scenes.vector.add(mesh);
+    manualParticles.push(mesh);
+}
+
+
+
+
+function handleVectorClick(event) {
+    const container = document.getElementById('vectorCont');
+    const rect = container.getBoundingClientRect();
+    
+    // Calculate mouse position in normalized device coordinates (-1 to +1)
+    mouse.x = ((event.clientX - rect.left) / container.clientWidth) * 2 - 1;
+    mouse.y = -((event.clientY - rect.top) / container.clientHeight) * 2 + 1;
+
+    raycaster.setFromCamera(mouse, cameras.vector);
+    
+    // Find the intersection with the grid helper or a hidden plane
+    // For simplicity, we'll assume placement on the X-Y plane (Z=0 in Three.js)
+    const intersectPoint = new THREE.Vector3();
+    raycaster.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), intersectPoint);
+    
+    if (intersectPoint) {
+        // Update UI inputs to reflect click position
+        document.getElementById('manualX').value = intersectPoint.x.toFixed(1);
+        document.getElementById('manualY').value = intersectPoint.z.toFixed(1);
+        document.getElementById('manualZ').value = intersectPoint.y.toFixed(1);
+        
+        spawnManualParticle(intersectPoint.x, intersectPoint.z, intersectPoint.y);
+    }
+}
+
+
 
 // --- Initialization & Event Listeners ---
 
 window.onload = () => {
     initWorld('scalarPlot', 'scalar');
     initWorld('vectorPlot', 'vector');
+
+document.getElementById('addParticleBtn').addEventListener('click', () => {
+    const x = parseFloat(document.getElementById('manualX').value);
+    const y = parseFloat(document.getElementById('manualY').value);
+    const z = parseFloat(document.getElementById('manualZ').value);
+    spawnManualParticle(x, y, z);
+});
+
+document.getElementById('vectorPlot').addEventListener('dblclick', handleVectorClick);
+
     
     // Updated list of inputs to include markerDensity
     const inputs = ['density', 'arrowSize', 'markerSize', 'markerDensity', 'colorScale', 'scalar', 'vector'];
