@@ -5,6 +5,19 @@ const renderers = { scalar: null, vector: null };
 const controls = { scalar: null, vector: null };
 const groups = { scalar: new THREE.Group(), vector: new THREE.Group() };
 
+// Create a sharp circle texture for MATLAB-style dots
+const pointTexture = (() => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 64;
+    canvas.height = 64;
+    const ctx = canvas.getContext('2d');
+    ctx.beginPath();
+    ctx.arc(32, 32, 30, 0, Math.PI * 2);
+    ctx.fillStyle = 'white';
+    ctx.fill();
+    return new THREE.CanvasTexture(canvas);
+})();
+
 const PALETTES = {
     Viridis: [[0, 0xfde725], [0.2, 0x5ec962], [0.5, 0x21918c], [0.8, 0x3b528b], [1, 0x440154]],
     Hot: [[0, 0xffffff], [0.3, 0xffaa00], [0.6, 0xe60000], [1, 0x000000]],
@@ -29,6 +42,7 @@ function getColor(t, scaleName) {
 
 function initWorld(containerId, type) {
     const container = document.getElementById(containerId);
+    if (!container) return;
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0xffffff);
     const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
@@ -93,28 +107,49 @@ function renderScalar() {
             geo.setAttribute('color', new THREE.BufferAttribute(cols, 3));
             geo.computeVertexNormals();
             groups.scalar.add(new THREE.Mesh(geo, new THREE.MeshPhongMaterial({vertexColors:true, side:THREE.DoubleSide})));
-        } else {
-            const dens = 14; 
-            const step = (range*2)/dens;
-            const data = [];
-            for(let x=-range; x<=range; x+=step)
-                for(let y=-range; y<=range; y+=step)
-                    for(let z=-range; z<=range; z+=step) {
-                        let v = math.evaluate(expr, {x,y,z});
-                        minV = Math.min(minV, v); maxV = Math.max(maxV, v);
-                        data.push({x, y, z, v});
+       } else {
+            // --- FIXED HIGH-PERFORMANCE 3D PLOT ---
+            const dens = 25; 
+            const step = (range * 2) / dens;
+            const positions = [];
+            const rawValues = [];
+
+            for (let x = -range; x <= range; x += step) {
+                for (let y = -range; y <= range; y += step) {
+                    for (let z = -range; z <= range; z += step) {
+                        let v = math.evaluate(expr, { x, y, z });
+                        minV = Math.min(minV, v);
+                        maxV = Math.max(maxV, v);
+                        
+                        // AXIS FIX: Maps Math Z to Three.js Y (Vertical)
+                        // Maps Math Y to Three.js Z (Depth)
+                        positions.push(x, z, -y); 
+                        rawValues.push(v);
                     }
-            const sphereGeo = new THREE.SphereGeometry(dotSize, 12, 12);
-            const sphereMat = new THREE.MeshPhongMaterial({ transparent: true, opacity: 0.45, depthWrite: false, shininess: 120, specular: 0x555555 });
-            const instancedMesh = new THREE.InstancedMesh(sphereGeo, sphereMat, data.length);
-            const matrix = new THREE.Matrix4();
-            data.forEach((d, i) => {
-                matrix.setPosition(d.x, d.y, d.z);
-                instancedMesh.setMatrixAt(i, matrix);
-                const color = getColor((d.v - minV) / (maxV - minV || 1), palette);
-                instancedMesh.setColorAt(i, color);
+                }
+            }
+
+            const colors = [];
+            for (let i = 0; i < rawValues.length; i++) {
+                const color = getColor((rawValues[i] - minV) / (maxV - minV || 1), palette);
+                colors.push(color.r, color.g, color.b);
+            }
+
+            const geo = new THREE.BufferGeometry();
+            geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+            geo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+
+            // MATLAB STYLE: Sharp, opaque circles
+            const pointsMat = new THREE.PointsMaterial({
+                size: dotSize,
+                map: pointTexture,
+                vertexColors: true,
+                transparent: true,
+                alphaTest: 0.5, // This removes the "blurry" edges
+                sizeAttenuation: true
             });
-            groups.scalar.add(instancedMesh);
+
+            groups.scalar.add(new THREE.Points(geo, pointsMat));
         }
     } catch(e) { console.error(e); }
     updateLegend('scalarLegend', minV, maxV, palette);
@@ -140,7 +175,8 @@ function renderVector() {
                     const w = parts.length > 2 ? math.evaluate(parts[2], {x,y,z}) : 0;
                     const mag = Math.sqrt(u*u + v*v + w*w);
                     maxMag = Math.max(maxMag, mag);
-                    vectors.push({x,y,z,u,v,w,mag});
+                    // Match the Scalar axis mapping: Math Z -> Three Y, Math Y -> Three Z
+                    vectors.push({x, y: z, z: y, u, v: w, w: v, mag});
                 } catch(e){}
             }
         }
@@ -148,7 +184,7 @@ function renderVector() {
     vectors.forEach(v => {
         if(v.mag === 0) return;
         const color = getColor(v.mag/(maxMag||1), palette);
-        groups.vector.add(new THREE.ArrowHelper(new THREE.Vector3(v.u, v.w, v.v).normalize(), new THREE.Vector3(v.x, v.z, v.y), size, color.getHex(), size*0.2, size*0.2));
+        groups.vector.add(new THREE.ArrowHelper(new THREE.Vector3(v.u, v.v, v.w).normalize(), new THREE.Vector3(v.x, v.y, v.z), size, color.getHex(), size*0.2, size*0.2));
     });
     updateLegend('vectorLegend', 0, maxMag, palette);
 }
@@ -157,6 +193,7 @@ function renderVector() {
 
 function updateLegend(id, min, max, paletteName) {
     const el = document.getElementById(id);
+    if (!el) return;
     const palette = [...PALETTES[paletteName]];
     const grad = palette.map((p, i) => `#${new THREE.Color(p[1]).getHexString()} ${(i/(palette.length-1))*100}%`).join(',');
     el.className = "absolute top-4 right-4 z-20 adaptive-legend p-2 rounded-xl flex items-center gap-3 shadow-lg transition-colors";
@@ -167,17 +204,42 @@ function updateLabels(type) {
     const container = document.getElementById(type + 'Cont');
     const camera = cameras[type];
     if (!container || !camera) return;
+
     let yLabelText = "Z"; 
+    let is3DScalar = false;
+
     if (type === 'scalar') {
         const expr = document.getElementById("scalar").value;
         const hasY = expr.includes('y'), hasZ = expr.includes('z');
-        if (!hasY && !hasZ) yLabelText = "f(x)";
-        else if (!hasZ) yLabelText = "f(x,y)";
+        
+        if (!hasY && !hasZ) {
+            yLabelText = "f(x)";
+        } else if (!hasZ) {
+            yLabelText = "f(x,y)";
+        } else {
+            // It is a 3D Scalar plot
+            is3DScalar = true;
+        }
     }
-    const labels = [{ id: type + '-lx', pos: [5, 0, 0], txt: 'X', col: '#ef4444' }, { id: type + '-ly', pos: [0, 5, 0], txt: yLabelText, col: '#10b981' }, { id: type + '-lz', pos: [0, 0, 5], txt: 'Y', col: '#3b82f6' }];
+
+    // Define label positions
+    // Logic: If it's the 3D Scalar plot, put Y at -5. Otherwise, keep it at 5.
+    const yPos = (type === 'scalar' && is3DScalar) ? -5 : 5;
+
+    const labels = [
+        { id: type + '-lx', pos: [5, 0, 0], txt: 'X', col: '#ef4444' }, 
+        { id: type + '-ly', pos: [0, 5, 0], txt: yLabelText, col: '#10b981' }, 
+        { id: type + '-lz', pos: [0, 0, yPos], txt: 'Y', col: '#3b82f6' }
+    ];
+
     labels.forEach(l => {
         let el = document.getElementById(l.id);
-        if (!el) { el = document.createElement('div'); el.id = l.id; el.className = 'absolute pointer-events-none axis-label z-50 transition-colors'; container.appendChild(el); }
+        if (!el) { 
+            el = document.createElement('div'); 
+            el.id = l.id; 
+            el.className = 'absolute pointer-events-none axis-label z-50 transition-colors'; 
+            container.appendChild(el); 
+        }
         const vec = new THREE.Vector3(...l.pos).project(camera);
         if (vec.z > 1) { el.style.display = 'none'; return; }
         el.style.display = 'block';
@@ -188,9 +250,7 @@ function updateLabels(type) {
         el.style.backgroundColor = isDarkMode ? '#1e293b' : '#ffffff';
         el.innerText = l.txt;
     });
-}
-
-function toggleFullScreen(id) {
+}function toggleFullScreen(id) {
     const el = document.getElementById(id);
     el.classList.toggle('fullscreen-mode');
     setTimeout(() => {
@@ -203,12 +263,9 @@ function toggleFullScreen(id) {
 }
 
 function updatePlot() {
-    document.getElementById('densityVal').innerText = document.getElementById('density').value;
-    document.getElementById('arrowSizeVal').innerText = document.getElementById('arrowSize').value;
-    document.getElementById('markerSizeVal').innerText = document.getElementById('markerSize').value;
-    if(document.getElementById('flowSpeedVal')) {
-        document.getElementById('flowSpeedVal').innerText = document.getElementById('flowSpeed').value;
-    }
+    const dVal = document.getElementById('densityVal'); if(dVal) dVal.innerText = document.getElementById('density').value;
+    const aVal = document.getElementById('arrowSizeVal'); if(aVal) aVal.innerText = document.getElementById('arrowSize').value;
+    const mVal = document.getElementById('markerSizeVal'); if(mVal) mVal.innerText = document.getElementById('markerSize').value;
     renderScalar(); renderVector();
 }
 
@@ -219,24 +276,19 @@ function animate() {
         if(renderers[k]) renderers[k].render(scenes[k], cameras[k]);
         updateLabels(k);
     });
-    updateParticles(); // Particle animation hook
+    updateParticles();
 }
 
 function toggleDarkMode() {
     isDarkMode = !isDarkMode;
     document.body.classList.toggle('dark-mode');
-    
-    // Update the button icon
     const themeBtn = document.getElementById('themeBtn');
-    themeBtn.innerText = isDarkMode ? "☀️" : "🌙";
-
-    // Update the scene background colors
+    if(themeBtn) themeBtn.innerText = isDarkMode ? "☀️" : "🌙";
     ['scalar', 'vector'].forEach(k => {
-        if (scenes[k]) {
-            scenes[k].background.setHex(isDarkMode ? 0x0f172a : 0xffffff);
-        }
+        if (scenes[k]) scenes[k].background.setHex(isDarkMode ? 0x0f172a : 0xffffff);
     });
 }
+
 // --- Particle Flow Logic ---
 
 let isFlowing = false;
@@ -267,45 +319,30 @@ function updateParticles() {
     if (!isFlowing) return;
     const expr = document.getElementById("vector").value;
     const parts = expr.replace(/[\[\]\s]/g, "").split(",");
-    const dof = parts.length;
     const speedMultiplier = parseFloat(document.getElementById('flowSpeed')?.value || 1.0) * 0.02;
 
     particles.forEach(p => {
         try {
-            const lifeRatio = p.life / 100;
-            let pColor = isDarkMode ? 
-                new THREE.Color().lerpColors(new THREE.Color(0x475569), new THREE.Color(0xf8fafc), lifeRatio) : 
-                new THREE.Color().lerpColors(new THREE.Color(0x1e293b), new THREE.Color(0x4f46e5), lifeRatio);
-            p.material.color.copy(pColor);
-
             const scope = { x: p.position.x, y: p.position.z, z: p.position.y };
             let vx = math.evaluate(parts[0] || "0", scope);
-            let vy = dof > 1 ? math.evaluate(parts[1], scope) : 0;
-            let vz = dof > 2 ? math.evaluate(parts[2], scope) : 0;
+            let vy = parts.length > 1 ? math.evaluate(parts[1], scope) : 0;
+            let vz = parts.length > 2 ? math.evaluate(parts[2], scope) : 0;
 
             p.position.x += vx * speedMultiplier;
-            if (dof > 1) p.position.z += vy * speedMultiplier;
-            if (dof > 2) p.position.y += vz * speedMultiplier;
-
-            if (dof === 1) { p.position.z = 0; p.position.y = 0; }
-            if (dof === 2) { p.position.y = 0; }
+            p.position.z += vy * speedMultiplier;
+            p.position.y += vz * speedMultiplier;
 
             p.life--;
-            p.material.opacity = lifeRatio * (isDarkMode ? 0.8 : 0.9);
             if (p.life <= 0 || Math.abs(p.position.x) > 5 || Math.abs(p.position.y) > 5 || Math.abs(p.position.z) > 5) resetParticle(p);
         } catch (e) { p.life = 0; }
     });
 }
 
-// --- Initialization & Event Listeners ---
-
 window.onload = () => {
     initWorld('scalarPlot', 'scalar');
     initWorld('vectorPlot', 'vector');
     
-    const inputs = ['density', 'arrowSize', 'markerSize', 'colorScale', 'scalar', 'vector'];
-    if(document.getElementById('flowSpeed')) inputs.push('flowSpeed');
-    
+    const inputs = ['density', 'arrowSize', 'markerSize', 'colorScale', 'scalar', 'vector', 'flowSpeed'];
     inputs.forEach(id => {
         const el = document.getElementById(id);
         if(el) el.addEventListener('input', updatePlot);
@@ -316,14 +353,7 @@ window.onload = () => {
         flowBtn.addEventListener('click', function() {
             isFlowing = !isFlowing;
             this.innerText = isFlowing ? "🛑 FLOW: ON" : "✨ FLOW: OFF";
-            if (isFlowing) {
-                this.style.backgroundColor = isDarkMode ? "#f8fafc" : "#1e293b";
-                this.style.color = isDarkMode ? "#0f172a" : "#ffffff";
-                initParticles();
-            } else {
-                this.style.backgroundColor = "rgba(0, 0, 0, 0.4)";
-                this.style.color = "#ffffff";
-            }
+            if (isFlowing) initParticles();
             particleGroup.visible = isFlowing;
         });
     }
@@ -331,4 +361,3 @@ window.onload = () => {
     animate(); 
     updatePlot();
 };
-
