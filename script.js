@@ -456,6 +456,13 @@ document.getElementById('addParticleBtn').addEventListener('click', () => {
 });
 
 document.getElementById('vectorPlot').addEventListener('dblclick', handleVectorClick);
+    // Add this inside window.onload = () => { ... }
+document.getElementById('clearManualBtn').addEventListener('click', () => {
+    manualParticles.forEach(p => {
+        scenes.vector.remove(p);
+    });
+    manualParticles = [];
+});
 
     
     // Updated list of inputs to include markerDensity
@@ -487,3 +494,4 @@ document.getElementById('vectorPlot').addEventListener('dblclick', handleVectorC
     animate(); 
     updatePlot();
 };
+
