@@ -9,6 +9,8 @@ let manualParticles = [];
 const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2();
 
+let streamlines = []; // To store the line objects
+
 
 
 
@@ -412,26 +414,46 @@ function updateParticles() {
             p.position.x += vx2 * h;
             if (parts.length > 1) p.position.z += vy2 * h;
             if (parts.length > 2) p.position.y += vz2 * h;
+
+           if (p.streamline && p.pathPoints.length < 500) { // Limit length for performance
+            p.pathPoints.push(p.position.clone());
+            p.streamline.geometry.setFromPoints(p.pathPoints);
+        }
+
+
+           
         } catch (e) { }
     });
 }
 
 function spawnManualParticle(x, y, z) {
+    const isTraceEnabled = document.getElementById('enableTrace').checked;
+    
+    // 1. Create the Particle Mesh
     const pGeo = new THREE.SphereGeometry(0.12, 12, 12);
     const pMat = new THREE.MeshPhongMaterial({ 
-        color: 0xff3366, 
-        emissive: 0xff0000, 
+        color: isTraceEnabled ? 0x6366f1 : 0xff3366, 
+        emissive: isTraceEnabled ? 0x6366f1 : 0xff0000, 
         emissiveIntensity: 0.5 
     });
     const mesh = new THREE.Mesh(pGeo, pMat);
-    
     mesh.position.set(x, z, y); 
-    // No life property assigned here
     
+    // 2. Initialize Streamline if checked
+    if (isTraceEnabled) {
+        const lineMat = new THREE.LineBasicMaterial({ color: 0x6366f1, transparent: true, opacity: 0.6 });
+        const lineGeo = new THREE.BufferGeometry().setFromPoints([mesh.position.clone()]);
+        const line = new THREE.Line(lineGeo, lineMat);
+        
+        mesh.streamline = line; // Attach line reference to the particle
+        mesh.pathPoints = [mesh.position.clone()]; // Store history of positions
+        scenes.vector.add(line);
+        streamlines.push(line);
+    }
+
     scenes.vector.add(mesh);
     manualParticles.push(mesh);
 }
-
 
 
 
@@ -480,6 +502,9 @@ document.getElementById('vectorPlot').addEventListener('dblclick', handleVectorC
 document.getElementById('clearManualBtn').addEventListener('click', () => {
     manualParticles.forEach(p => {
         scenes.vector.remove(p);
+       streamlines.forEach(line => scenes.vector.remove(line));
+       streamlines = [];
+        
     });
     manualParticles = [];
 });
@@ -514,5 +539,4 @@ document.getElementById('clearManualBtn').addEventListener('click', () => {
     animate(); 
     updatePlot();
 };
-
 
