@@ -5,7 +5,7 @@ const renderers = { scalar: null, vector: null };
 const controls = { scalar: null, vector: null };
 const groups = { scalar: new THREE.Group(), vector: new THREE.Group() };
 
-// Create a sharp circle texture for MATLAB-style dots
+
 const pointTexture = (() => {
     const canvas = document.createElement('canvas');
     canvas.width = 64;
@@ -42,7 +42,6 @@ function getColor(t, scaleName) {
 
 function initWorld(containerId, type) {
     const container = document.getElementById(containerId);
-    if (!container) return;
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0xffffff);
     const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
@@ -107,7 +106,7 @@ function renderScalar() {
             geo.setAttribute('color', new THREE.BufferAttribute(cols, 3));
             geo.computeVertexNormals();
             groups.scalar.add(new THREE.Mesh(geo, new THREE.MeshPhongMaterial({vertexColors:true, side:THREE.DoubleSide})));
-       } else {
+        } else {
             // --- FIXED HIGH-PERFORMANCE 3D PLOT ---
             const dens = 25; 
             const step = (range * 2) / dens;
@@ -155,8 +154,6 @@ function renderScalar() {
     updateLegend('scalarLegend', minV, maxV, palette);
 }
 
-// --- Vector Rendering ---
-
 function renderVector() {
     groups.vector.clear();
     const expr = document.getElementById("vector").value;
@@ -189,17 +186,18 @@ function renderVector() {
     updateLegend('vectorLegend', 0, maxMag, palette);
 }
 
+
+
+
 // --- UI & Helpers ---
 
 function updateLegend(id, min, max, paletteName) {
     const el = document.getElementById(id);
-    if (!el) return;
     const palette = [...PALETTES[paletteName]];
     const grad = palette.map((p, i) => `#${new THREE.Color(p[1]).getHexString()} ${(i/(palette.length-1))*100}%`).join(',');
     el.className = "absolute top-4 right-4 z-20 adaptive-legend p-2 rounded-xl flex items-center gap-3 shadow-lg transition-colors";
     el.innerHTML = `<span class="text-[11px] font-black">${min === Infinity ? 0 : min.toFixed(1)}</span><div class="w-20 h-2.5 rounded-full border border-black/10" style="background:linear-gradient(to right, ${grad})"></div><span class="text-[11px] font-black">${max === -Infinity ? 0 : max.toFixed(1)}</span>`;
 }
-
 function updateLabels(type) {
     const container = document.getElementById(type + 'Cont');
     const camera = cameras[type];
@@ -208,6 +206,7 @@ function updateLabels(type) {
     let yLabelText = "Z"; 
     let is3DScalar = false;
 
+    // Determine if we are in 3D Scalar mode
     if (type === 'scalar') {
         const expr = document.getElementById("scalar").value;
         const hasY = expr.includes('y'), hasZ = expr.includes('z');
@@ -217,19 +216,18 @@ function updateLabels(type) {
         } else if (!hasZ) {
             yLabelText = "f(x,y)";
         } else {
-            // It is a 3D Scalar plot
+            // It contains 'z', so it is the 3D point cloud
             is3DScalar = true;
         }
     }
 
-    // Define label positions
-    // Logic: If it's the 3D Scalar plot, put Y at -5. Otherwise, keep it at 5.
-    const yPos = (type === 'scalar' && is3DScalar) ? -5 : 5;
+    // Set Y label position: use -5 for 3D scalar, otherwise use 5
+    const depthPos = (type === 'scalar' && is3DScalar) ? -5 : 5;
 
     const labels = [
         { id: type + '-lx', pos: [5, 0, 0], txt: 'X', col: '#ef4444' }, 
         { id: type + '-ly', pos: [0, 5, 0], txt: yLabelText, col: '#10b981' }, 
-        { id: type + '-lz', pos: [0, 0, yPos], txt: 'Y', col: '#3b82f6' }
+        { id: type + '-lz', pos: [0, 0, depthPos], txt: 'Y', col: '#3b82f6' }
     ];
 
     labels.forEach(l => {
@@ -250,7 +248,8 @@ function updateLabels(type) {
         el.style.backgroundColor = isDarkMode ? '#1e293b' : '#ffffff';
         el.innerText = l.txt;
     });
-}function toggleFullScreen(id) {
+}
+function toggleFullScreen(id) {
     const el = document.getElementById(id);
     el.classList.toggle('fullscreen-mode');
     setTimeout(() => {
@@ -263,9 +262,12 @@ function updateLabels(type) {
 }
 
 function updatePlot() {
-    const dVal = document.getElementById('densityVal'); if(dVal) dVal.innerText = document.getElementById('density').value;
-    const aVal = document.getElementById('arrowSizeVal'); if(aVal) aVal.innerText = document.getElementById('arrowSize').value;
-    const mVal = document.getElementById('markerSizeVal'); if(mVal) mVal.innerText = document.getElementById('markerSize').value;
+    document.getElementById('densityVal').innerText = document.getElementById('density').value;
+    document.getElementById('arrowSizeVal').innerText = document.getElementById('arrowSize').value;
+    document.getElementById('markerSizeVal').innerText = document.getElementById('markerSize').value;
+    if(document.getElementById('flowSpeedVal')) {
+        document.getElementById('flowSpeedVal').innerText = document.getElementById('flowSpeed').value;
+    }
     renderScalar(); renderVector();
 }
 
@@ -276,19 +278,24 @@ function animate() {
         if(renderers[k]) renderers[k].render(scenes[k], cameras[k]);
         updateLabels(k);
     });
-    updateParticles();
+    updateParticles(); // Particle animation hook
 }
 
 function toggleDarkMode() {
     isDarkMode = !isDarkMode;
     document.body.classList.toggle('dark-mode');
+    
+    // Update the button icon
     const themeBtn = document.getElementById('themeBtn');
-    if(themeBtn) themeBtn.innerText = isDarkMode ? "☀️" : "🌙";
+    themeBtn.innerText = isDarkMode ? "☀️" : "🌙";
+
+    // Update the scene background colors
     ['scalar', 'vector'].forEach(k => {
-        if (scenes[k]) scenes[k].background.setHex(isDarkMode ? 0x0f172a : 0xffffff);
+        if (scenes[k]) {
+            scenes[k].background.setHex(isDarkMode ? 0x0f172a : 0xffffff);
+        }
     });
 }
-
 // --- Particle Flow Logic ---
 
 let isFlowing = false;
@@ -319,30 +326,45 @@ function updateParticles() {
     if (!isFlowing) return;
     const expr = document.getElementById("vector").value;
     const parts = expr.replace(/[\[\]\s]/g, "").split(",");
+    const dof = parts.length;
     const speedMultiplier = parseFloat(document.getElementById('flowSpeed')?.value || 1.0) * 0.02;
 
     particles.forEach(p => {
         try {
+            const lifeRatio = p.life / 100;
+            let pColor = isDarkMode ? 
+                new THREE.Color().lerpColors(new THREE.Color(0x475569), new THREE.Color(0xf8fafc), lifeRatio) : 
+                new THREE.Color().lerpColors(new THREE.Color(0x1e293b), new THREE.Color(0x4f46e5), lifeRatio);
+            p.material.color.copy(pColor);
+
             const scope = { x: p.position.x, y: p.position.z, z: p.position.y };
             let vx = math.evaluate(parts[0] || "0", scope);
-            let vy = parts.length > 1 ? math.evaluate(parts[1], scope) : 0;
-            let vz = parts.length > 2 ? math.evaluate(parts[2], scope) : 0;
+            let vy = dof > 1 ? math.evaluate(parts[1], scope) : 0;
+            let vz = dof > 2 ? math.evaluate(parts[2], scope) : 0;
 
             p.position.x += vx * speedMultiplier;
-            p.position.z += vy * speedMultiplier;
-            p.position.y += vz * speedMultiplier;
+            if (dof > 1) p.position.z += vy * speedMultiplier;
+            if (dof > 2) p.position.y += vz * speedMultiplier;
+
+            if (dof === 1) { p.position.z = 0; p.position.y = 0; }
+            if (dof === 2) { p.position.y = 0; }
 
             p.life--;
+            p.material.opacity = lifeRatio * (isDarkMode ? 0.8 : 0.9);
             if (p.life <= 0 || Math.abs(p.position.x) > 5 || Math.abs(p.position.y) > 5 || Math.abs(p.position.z) > 5) resetParticle(p);
         } catch (e) { p.life = 0; }
     });
 }
 
+// --- Initialization & Event Listeners ---
+
 window.onload = () => {
     initWorld('scalarPlot', 'scalar');
     initWorld('vectorPlot', 'vector');
     
-    const inputs = ['density', 'arrowSize', 'markerSize', 'colorScale', 'scalar', 'vector', 'flowSpeed'];
+    const inputs = ['density', 'arrowSize', 'markerSize', 'colorScale', 'scalar', 'vector'];
+    if(document.getElementById('flowSpeed')) inputs.push('flowSpeed');
+    
     inputs.forEach(id => {
         const el = document.getElementById(id);
         if(el) el.addEventListener('input', updatePlot);
@@ -353,7 +375,14 @@ window.onload = () => {
         flowBtn.addEventListener('click', function() {
             isFlowing = !isFlowing;
             this.innerText = isFlowing ? "🛑 FLOW: ON" : "✨ FLOW: OFF";
-            if (isFlowing) initParticles();
+            if (isFlowing) {
+                this.style.backgroundColor = isDarkMode ? "#f8fafc" : "#1e293b";
+                this.style.color = isDarkMode ? "#0f172a" : "#ffffff";
+                initParticles();
+            } else {
+                this.style.backgroundColor = "rgba(0, 0, 0, 0.4)";
+                this.style.color = "#ffffff";
+            }
             particleGroup.visible = isFlowing;
         });
     }
