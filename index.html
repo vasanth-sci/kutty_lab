@@ -21,13 +21,18 @@
 <body id="mainBody" class="bg-slate-50 text-slate-900 font-sans transition-colors duration-500 overflow-hidden">
 
 <div class="flex flex-col h-screen scale-in overflow-hidden">
-    <header class="bg-white border-b px-4 py-3 flex justify-between items-center shadow-sm z-10 dark-target flex-shrink-0">
-        <h1 class="text-lg font-bold flex items-center gap-2">
-            <span>🐷</span>
-            <span class="bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">Dozer Lab</span>
-        </h1>
+
+
+  <header class="bg-white border-b px-4 py-3 flex justify-between items-center shadow-sm z-10 dark-target flex-shrink-0">
+    <h1 class="text-lg font-bold flex items-center gap-2">
+        <span>🐷</span>
+        <span class="bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">Dozer Lab</span>
+    </h1>
+    <div class="flex gap-2">
+        <button onclick="toggleModal()" class="p-2 rounded-full bg-slate-100 border border-slate-200 hover:bg-indigo-50 transition-colors" title="How to use">ℹ️</button>
         <button onclick="toggleDarkMode()" class="p-2 rounded-full bg-slate-100 border border-slate-200" id="themeBtn">🌙</button>
-    </header>
+    </div>
+</header>
 
     <div class="flex flex-1 flex-col lg:flex-row overflow-y-auto lg:overflow-hidden">
         <aside class="w-full lg:w-80 bg-white border-r p-6 dark-target overflow-y-auto custom-scrollbar">
@@ -60,7 +65,7 @@
                         <input type="range" id="arrowSize" min="0.0" max="2.0" step="0.1" value="0.6" class="w-full accent-indigo-600">
                     </div>
                    <div class="flex flex-col gap-1">
-    <label class="block text-xs font-black text-slate-400 mb-1">3D Scatter Density: <span id="markerDensityVal">25</span></label>
+    <label class="block text-xs font-black text-slate-400 mb-1">3D Scatter Density: <span id="markerDensityVal" class="text-indigo-600">25</span></label>
     <input type="range" id="markerDensity" min="5" max="50" value="25" class="w-full accent-indigo-600">
 </div> 
                     <div>
@@ -75,7 +80,7 @@
 
 <div class="pt-4 border-t border-slate-100 dark:border-slate-800">
     <div class="flex justify-between items-center mb-3">
-        <label class="block text-xs font-black text-slate-400 uppercase">Manual Particle</label>
+        <label class="block text-xs font-black text-slate-400">Manual Particle</label>
         <button id="clearManualBtn" class="text-slate-400 hover:text-red-500 transition-colors" title="Clear all manual particles">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -96,7 +101,7 @@
 
 <div class="flex items-center gap-2 mb-3">
     <input type="checkbox" id="enableTrace" class="w-4 h-4 accent-indigo-600">
-    <label for="enableTrace" class="text-[10px] font-black text-slate-400 uppercase">Enable Streamline Trace</label>
+    <label for="enableTrace" class="text-[10px] font-black text-slate-600 uppercase"> Streamline Trace</label>
 </div>
 
 
@@ -133,5 +138,104 @@
     </div>
 </div>
 <script src="script.js"></script>
+
+
+
+<div id="infoModal" class="hidden fixed inset-0 z-[200] flex items-center justify-center p-4">
+    <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-md"></div>
+    
+    <div class="relative bg-white dark:bg-slate-900 w-full max-w-3xl rounded-[2rem] shadow-2xl border border-white/20 overflow-hidden transform transition-all">
+        <div class="grid grid-cols-1 md:grid-cols-5 h-full">
+            
+            <div class="hidden md:flex col-span-2 bg-indigo-600 p-10 flex-col justify-between text-white">
+                <div>
+                    <h2 class="text-3xl font-black leading-tight">Quick Start<br>Guide</h2>
+                    <p class="mt-4 text-indigo-100 text-sm leading-relaxed">Master the tools of Dozer Lab to visualize complex vector and scalar fields.</p>
+                </div>
+            </div>
+
+            <div class="col-span-3 p-8 md:p-12 max-h-[80vh] overflow-y-auto custom-scrollbar">
+                <div class="space-y-10">
+                    
+                    <section>
+                        <div class="flex items-center gap-3 mb-4">
+                            <span class="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 flex items-center justify-center text-xs font-bold">01</span>
+                            <h3 class="font-black text-slate-900 dark:text-white uppercase tracking-tighter">Defining Your Fields</h3>
+                        </div>
+                        <ul class="space-y-2 pl-11 text-xs text-slate-500 dark:text-slate-400">
+                            <li><b>Variables:</b> Use standard Cartesian coordinates (x, y, z)</li>
+                            <li><b>Multiplication:</b> Always use * symbol (e.g., 2 * x instead of 2x)</li>
+                            <li><b>Trigonometry:</b> For inverse functions, add 'a' prefix (e.g., asin(x), acos(y), atan(z))</li>
+                            <li class="bg-slate-50 dark:bg-slate-800 p-2 rounded-lg font-mono text-indigo-600 mt-2">2 * x + asin(y) * cos(z)</li>
+                        </ul>
+                    </section>
+
+                    <section>
+                        <div class="flex items-center gap-3 mb-4">
+                            <span class="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 flex items-center justify-center text-xs font-bold">02</span>
+                            <h3 class="font-black text-slate-900 dark:text-white uppercase tracking-tighter">Optimizing Performance</h3>
+                        </div>
+                        <p class="pl-11 text-xs text-slate-500 dark:text-slate-400 mb-3">Keep density settings within limits for smooth performance:</p>
+                        <div class="grid grid-cols-2 gap-3 pl-11">
+                            <div class="p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700">
+                                <p class="text-[10px] text-slate-400 font-bold uppercase mb-1">3D Scatter</p>
+                                <p class="text-lg font-black text-slate-700 dark:text-slate-200">&lt; 30</p>
+                            </div>
+                            <div class="p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700">
+                                <p class="text-[10px] text-slate-400 font-bold uppercase mb-1">Vector Density</p>
+                                <p class="text-lg font-black text-slate-700 dark:text-slate-200">&lt; 10</p>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section>
+                        <div class="flex items-center gap-3 mb-4">
+                            <span class="w-8 h-8 rounded-full bg-purple-100 dark:bg-purple-900/50 text-purple-600 flex items-center justify-center text-xs font-bold">03</span>
+                            <h3 class="font-black text-slate-900 dark:text-white uppercase tracking-tighter">Interactive Particle Dropping</h3>
+                        </div>
+                        <ul class="space-y-3 pl-11 text-xs text-slate-500 dark:text-slate-400">
+                            <li class="flex items-start gap-2">
+                                <span class="text-indigo-500">●</span>
+                                <span><b>Double-Click:</b> Double-click anywhere in the Vector Field plot to drop a particle at that location instantly.</span>
+                            </li>
+                            <li class="flex items-start gap-2">
+                                <span class="text-indigo-500">●</span>
+                                <span><b>Manual Coordinates:</b> Enter specific X, Y, and Z values in the sidebar and click "DROP PARTICLE" for precision.</span>
+                            </li>
+                        </ul>
+                    </section>
+
+                    <section>
+                        <div class="flex items-center gap-3 mb-4">
+                            <span class="w-8 h-8 rounded-full bg-pink-100 dark:bg-pink-900/50 text-pink-600 flex items-center justify-center text-xs font-bold">04</span>
+                            <h3 class="font-black text-slate-900 dark:text-white uppercase tracking-tighter">Streamlines & Animation</h3>
+                        </div>
+                        <ul class="space-y-3 pl-11 text-xs text-slate-500 dark:text-slate-400">
+                            <li class="flex items-start gap-2">
+                                <span class="text-indigo-500">●</span>
+                                <span><b>Trace Paths:</b> Enable "Streamline Trace" before dropping particles to visualize the permanent flow path.</span>
+                            </li>
+                            <li class="flex items-start gap-2">
+                                <span class="text-indigo-500">●</span>
+                                <span><b>Bulk Flow:</b> Toggle the "FLOW" button to release animated particle clouds following the vector field.</span>
+                            </li>
+                            <li class="flex items-start gap-2">
+                                <span class="text-indigo-500">●</span>
+                                <span><b>Speed Control:</b> Use the Flow Speed slider to adjust particle animation speed in real-time.</span>
+                            </li>
+                        </ul>
+                    </section>
+                </div>
+
+                <button onclick="toggleModal()" class="w-full mt-10 py-4 bg-slate-900 dark:bg-white dark:text-slate-900 text-white rounded-2xl font-black uppercase tracking-widest text-xs hover:scale-[1.02] transition-transform active:scale-95 shadow-xl">
+                    Acknowledge & Enter Lab
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
 </body>
 </html>
