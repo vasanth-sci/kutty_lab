@@ -67,6 +67,11 @@ function renderScalar() {
     const expr = document.getElementById("scalar").value;
     const palette = document.getElementById("colorScale").value;
     const dotSize = parseFloat(document.getElementById("markerSize").value);
+    
+    // ADDED: Marker Density for 3D Scatter
+    const mDensInput = document.getElementById("markerDensity");
+    const scatterDens = mDensInput ? parseInt(mDensInput.value) : 25;
+
     const range = 4;
     const hasY = expr.includes('y'), hasZ = expr.includes('z');
     let minV = Infinity, maxV = -Infinity;
@@ -108,8 +113,8 @@ function renderScalar() {
             groups.scalar.add(new THREE.Mesh(geo, new THREE.MeshPhongMaterial({vertexColors:true, side:THREE.DoubleSide})));
         } else {
             // --- FIXED HIGH-PERFORMANCE 3D PLOT ---
-            const dens = 25; 
-            const step = (range * 2) / dens;
+            // MODIFIED: Uses dynamic density slider
+            const step = (range * 2) / scatterDens; 
             const positions = [];
             const rawValues = [];
 
@@ -265,6 +270,11 @@ function updatePlot() {
     document.getElementById('densityVal').innerText = document.getElementById('density').value;
     document.getElementById('arrowSizeVal').innerText = document.getElementById('arrowSize').value;
     document.getElementById('markerSizeVal').innerText = document.getElementById('markerSize').value;
+    
+    // Update marker density display
+    const mDens = document.getElementById('markerDensity');
+    if(mDens) document.getElementById('markerDensityVal').innerText = mDens.value;
+
     if(document.getElementById('flowSpeedVal')) {
         document.getElementById('flowSpeedVal').innerText = document.getElementById('flowSpeed').value;
     }
@@ -362,7 +372,8 @@ window.onload = () => {
     initWorld('scalarPlot', 'scalar');
     initWorld('vectorPlot', 'vector');
     
-    const inputs = ['density', 'arrowSize', 'markerSize', 'colorScale', 'scalar', 'vector'];
+    // Updated list of inputs to include markerDensity
+    const inputs = ['density', 'arrowSize', 'markerSize', 'markerDensity', 'colorScale', 'scalar', 'vector'];
     if(document.getElementById('flowSpeed')) inputs.push('flowSpeed');
     
     inputs.forEach(id => {
