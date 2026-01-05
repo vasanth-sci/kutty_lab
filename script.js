@@ -501,11 +501,68 @@ window.onclick = function(event) {
 
 
 
+
 // --- Initialization & Event Listeners ---
 
 window.onload = () => {
+
     initWorld('scalarPlot', 'scalar');
     initWorld('vectorPlot', 'vector');
+
+    const API_KEY = "AIzaSyD_x35FSs6gl9bnVlSct3KMnBboHAZswSA";
+
+const gMsg = document.getElementById("gMessages");
+const gIn = document.getElementById("gInput");
+const gSend = document.getElementById("gSend");
+
+
+const chatBox = document.getElementById("geminiChat");
+const toggleBtn = document.getElementById("chatToggle");
+
+toggleBtn.onclick = (e) => {
+  e.stopPropagation();
+  chatBox.classList.toggle("minimized");
+};
+
+chatBox.onclick = () => {
+  if (chatBox.classList.contains("minimized")) {
+    chatBox.classList.remove("minimized");
+  }
+};
+
+
+function add(text, cls){
+  const d = document.createElement("div");
+  d.className = cls;
+  d.innerText = text;
+  gMsg.appendChild(d);
+  gMsg.scrollTop = gMsg.scrollHeight;
+}
+
+
+gSend.onclick = async ()=>{
+  const q = gIn.value.trim();
+  if(!q) return;
+  gIn.value="";
+
+  add(q,"g-user");
+  add("Thinking…","g-ai");
+
+  const r = await fetch(
+    "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key="+API_KEY,{
+      method:"POST",
+      headers:{ "Content-Type":"application/json" },
+      body: JSON.stringify({
+        contents:[{parts:[{text:q}]}]
+      })
+    }
+  );
+
+  const j = await r.json();
+  gMsg.lastChild.innerText =
+    j.candidates?.[0]?.content?.parts?.[0]?.text || "No response";
+};
+
 
 document.getElementById('addParticleBtn').addEventListener('click', () => {
     const x = parseFloat(document.getElementById('manualX').value);
@@ -553,7 +610,9 @@ document.getElementById('clearManualBtn').addEventListener('click', () => {
         });
     }
 
+
     animate(); 
     updatePlot();
 };
+
 
