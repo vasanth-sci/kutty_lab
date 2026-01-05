@@ -1,31 +1,10 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+
 body.dark-mode { background-color: #020617 !important; color: #f8fafc !important; }
 .dark-mode .dark-target { background-color: #0f172a !important; border-color: #1e293b !important; }
 .dark-mode .dark-target-bg { background-color: #020617 !important; }
 .dark-mode input, .dark-mode select { background-color: #1e293b !important; color: white !important; border-color: #334155 !important; }
 
-/* Fullscreen Logic */
-.fullscreen-active { position: fixed !important; inset: 0px !important; z-index: 50 !important; border-radius: 0 !important; }
-@media (min-width: 1024px) { .fullscreen-active { inset: 15px !important; border-radius: 24px !important; } }
-
-/* Animations */
-@keyframes scaleIn { from { opacity: 0; transform: scale(0.98); } to { opacity: 1; transform: scale(1); } }
-.scale-in { animation: scaleIn 0.6s cubic-bezier(0.16, 1, 0.3, 1); }
-
-/* Custom Scrollbar */
-.custom-scrollbar::-webkit-scrollbar { width: 5px; }
-.custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
-.dark-mode .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; }
-
-/* Plotly containers */
-.js-plotly-plot, .plot-container, .main-svg { border-radius: 24px !important; }
-
-@media (max-width: 1024px) {
-    .fullscreen-active .js-plotly-plot, 
-    .fullscreen-active .plot-container, 
-    .fullscreen-active .main-svg { border-radius: 0px !important; }
-} /* FIXED: Properly closed media query */
-
-/* Smooth orbit loader */
 .loader { display: inline-flex; gap: 10px; }
 .loader:before, .loader:after {
   content: ""; height: 22px; aspect-ratio: 1; border-radius: 50%;
@@ -34,3 +13,329 @@ body.dark-mode { background-color: #020617 !important; color: #f8fafc !important
 }
 .loader:after { --s: -1; animation-delay: -0.15s; }
 @keyframes l6 { 100% { transform: scaleX(var(--s,1)) rotate(360deg); } }
+
+.custom-scrollbar::-webkit-scrollbar { width: 5px; }
+.custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+
+/* Grid Layout */
+main { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; height: 100%; }
+
+/* Mobile Responsiveness Fix */
+@media (max-width: 1024px) {
+    body { overflow-y: auto !important; height: auto !important; }
+    .h-screen { height: auto !important; overflow: visible !important; }
+    aside { width: 100% !important; height: auto !important; border-right: none !important; border-bottom: 1px solid #e2e8f0; }
+    main { grid-template-columns: 1fr !important; height: auto !important; overflow: visible !important; padding: 10px; }
+    #scalarCont, #vectorCont { height: 500px !important; min-height: 500px; }
+}
+
+#scalarPlot, #vectorPlot { width: 100%; height: 100%; display: block; }
+
+
+/* Fullscreen mode for containers */
+.fullscreen-mode {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    z-index: 100 !important;
+    border-radius: 0 !important;
+}
+
+
+
+body:not(.dark-mode) {
+    background-color: #f1f5f9 !important; /* Slightly darker grey for better contrast with white cards */
+}
+
+/* Legend & Label Visibility */
+.adaptive-legend {
+    background-color: rgba(255, 255, 255, 0.9);
+    color: #1e293b;
+    border: 1px solid #e2e8f0;
+    backdrop-filter: blur(4px);
+}
+
+.dark-mode .adaptive-legend {
+    background-color: rgba(15, 23, 42, 0.8);
+    color: #f8fafc;
+    border: 1px solid #334155;
+}
+
+/* Axis Labels (The X, Y, Z floating tags) */
+.axis-label {
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 900;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* Input Fields Visibility */
+input, select {
+    color: #0f172a !important;
+    background-color: #ffffff !important;
+    border: 1px solid #cbd5e1 !important;
+}
+
+.dark-mode input, .dark-mode select {
+    color: #ffffff !important;
+    background-color: #1e293b !important;
+    border: 1px solid #334155 !important;
+}
+
+
+.animate-in {
+    animation: modalShow 0.3s ease-out;
+}
+
+@keyframes modalShow {
+    from { opacity: 0; transform: scale(0.95) translateY(10px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+#infoModal b { color: #6366f1; } /* Highlights important text in the instructions */
+
+
+/* ===== Cute Gemini Chat ===== */
+
+/* ===== Elegant Gemini Chat ===== */
+
+#geminiChat {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  width: 360px;
+  height: 500px;
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow: 
+    0 20px 50px rgba(0, 0, 0, 0.1),
+    0 4px 12px rgba(0, 0, 0, 0.05),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.6);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  z-index: 9999;
+  font-family: 'Inter', sans-serif;
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  transform-origin: bottom right;
+}
+
+/* Header */
+.g-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 20px;
+  background: rgba(255, 255, 255, 0.5);
+  border-bottom: 1px solid rgba(0,0,0,0.04);
+  cursor: pointer; /* Allows clicking header to toggle if script supports it */
+}
+
+.g-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 800;
+  font-size: 15px;
+  color: #1e293b;
+  letter-spacing: -0.02em;
+}
+
+.g-status {
+  width: 8px;
+  height: 8px;
+  background-color: #10b981;
+  border-radius: 50%;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
+}
+
+#chatToggle {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #64748b;
+  transition: all 0.2s ease;
+}
+
+#chatToggle:hover {
+  background: rgba(0,0,0,0.05);
+  color: #334155;
+}
+
+/* Messages Area */
+#gMessages {
+  flex: 1;
+  padding: 20px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  scroll-behavior: smooth;
+}
+
+/* Scrollbar styling */
+#gMessages::-webkit-scrollbar { width: 4px; }
+#gMessages::-webkit-scrollbar-track { background: transparent; }
+#gMessages::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 10px; }
+
+/* Message Bubbles */
+.g-user {
+  align-self: flex-end;
+  background: linear-gradient(135deg, #6366f1, #4f46e5);
+  color: white;
+  padding: 10px 16px;
+  border-radius: 20px 20px 4px 20px;
+  max-width: 80%;
+  font-size: 14px;
+  line-height: 1.5;
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.25);
+  animation: slideInRight 0.3s ease-out forwards;
+}
+
+.g-ai {
+  align-self: flex-start;
+  background: white;
+  color: #334155;
+  padding: 12px 18px;
+  border-radius: 20px 20px 20px 4px;
+  max-width: 80%;
+  font-size: 14px;
+  line-height: 1.5;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  border: 1px solid rgba(0,0,0,0.04);
+  animation: slideInLeft 0.3s ease-out forwards;
+}
+
+/* Input Area */
+.g-input {
+  padding: 16px;
+  background: rgba(255,255,255,0.9);
+  border-top: 1px solid rgba(0,0,0,0.04);
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.g-input input {
+  flex: 1;
+  border: 1px solid transparent;
+  outline: none;
+  background: #f1f5f9;
+  border-radius: 14px;
+  padding: 12px 16px;
+  font-size: 14px;
+  color: #334155;
+  transition: all 0.2s;
+}
+
+.g-input input:focus {
+  background: white;
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+.g-input button {
+  background: #6366f1;
+  border: none;
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.1s, background-color 0.2s;
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+}
+
+.g-input button:hover {
+  background: #4f46e5;
+  transform: scale(1.05);
+}
+
+.g-input button:active {
+  transform: scale(0.95);
+}
+
+/* Minimized State */
+#geminiChat.minimized {
+  width: 60px;
+  height: 60px;
+  border-radius: 30px;
+  cursor: pointer;
+  background: #6366f1; /* Main indigo color when minimized */
+  box-shadow: 0 10px 30px rgba(99, 102, 241, 0.5);
+}
+
+#geminiChat.minimized .g-head {
+  background: transparent;
+  border: none;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  justify-content: center;
+}
+
+/* Hide elements when minimized */
+#geminiChat.minimized .g-title,
+#geminiChat.minimized .g-input,
+#geminiChat.minimized #gMessages,
+#geminiChat.minimized #chatToggle {
+  display: none !important;
+}
+
+/* Show icon when minimized */
+#geminiChat.minimized .g-head::after {
+  content: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="white"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z"/></svg>');
+  display: block;
+  animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+/* Dark Mode Overrides */
+.dark-mode #geminiChat {
+  background: rgba(15, 23, 42, 0.85);
+  box-shadow: 
+    0 20px 50px rgba(0, 0, 0, 0.4),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+}
+
+.dark-mode .g-head {
+  background: rgba(30, 41, 59, 0.4);
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+
+.dark-mode .g-title { color: #f8fafc; }
+.dark-mode #chatToggle { color: #94a3b8; }
+.dark-mode #chatToggle:hover { background: rgba(255,255,255,0.1); color: white; }
+
+.dark-mode .g-ai {
+  background: #1e293b;
+  color: #e2e8f0;
+  border-color: rgba(255,255,255,0.05);
+}
+
+.dark-mode .g-input {
+  background: rgba(15, 23, 42, 0.95);
+  border-top: 1px solid rgba(255,255,255,0.05);
+}
+
+.dark-mode .g-input input {
+  background: #1e293b;
+  color: white;
+}
+
+/* Animations */
+@keyframes popIn { from { transform: scale(0); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+@keyframes slideInRight { from { transform: translateX(20px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+@keyframes slideInLeft { from { transform: translateX(-20px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
