@@ -498,6 +498,21 @@ window.onclick = function(event) {
 
 
 
+function getSimulationState() {
+    return {
+        scalarField: document.getElementById("scalar")?.value,
+        vectorField: document.getElementById("vector")?.value,
+        density: document.getElementById("density")?.value,
+        arrowSize: document.getElementById("arrowSize")?.value,
+        flowSpeed: document.getElementById("flowSpeed")?.value,
+        traceEnabled: document.getElementById("enableTrace")?.checked,
+        manualParticles: manualParticles.map(p => ({
+            x: p.position.x.toFixed(2),
+            y: p.position.z.toFixed(2),
+            z: p.position.y.toFixed(2)
+        }))
+    };
+}
 
 
 
@@ -506,7 +521,14 @@ window.onclick = function(event) {
 
 window.onload = async () => {
 
-    await puter.auth.signIn();
+    window.puterReady = false;
+
+    puter.auth.signIn().then(() => {
+        window.puterReady = true;
+        console.log("Puter connected");
+    }).catch(() => {
+        console.warn("Puter not connected");
+    });
 
     initWorld('scalarPlot', 'scalar');
     initWorld('vectorPlot', 'vector');
@@ -522,6 +544,7 @@ gIn.addEventListener("keydown", (e) => {
         gSend.click();          // trigger send
     }
 });
+
 
 
 const chatBox = document.getElementById("geminiChat");
@@ -548,12 +571,13 @@ function add(text, cls){
 }
 
 gSend.onclick = async () => {
-    const q = gIn.value.trim();
-    if (!q) return;
+    const userText = gIn.value.trim();
+    if (!userText) return;
     gIn.value = "";
 
     // 1. Add your message
-    add(q, "g-user");
+    add(userText, "g-user");
+
 
     // 2. Add the "Thinking..." bubble and keep a reference to it
     add("Thinking...", "g-ai");
@@ -561,9 +585,33 @@ gSend.onclick = async () => {
     const lastAiBubble = bubbles[bubbles.length - 1];
 
     try {
-                const stream = await puter.ai.chat(q, {
-        model: "gpt-5-nano",
-        stream: true
+            const simState = getSimulationState();
+
+        const aiPrompt = `
+        You are Dozer AI, a physics assistant embedded inside a live vector-field simulator.
+
+        IMPORTANT RULES:
+        - You have READ-ONLY access to the simulation.
+        - You CANNOT change, control, click, move, or modify anything.
+        - You must NEVER claim you adjusted parameters or edited the scene.
+        - You may only analyze, explain, infer, and give theoretical or practical insights.
+
+        Current simulation state (internal reference only, do not repeat unless the user explicitly asks):
+        ${JSON.stringify(simState, null, 2)}
+
+        User question:
+        ${userText}
+        `;
+        if (!window.puterReady) {
+           lastAiBubble.innerText = "⚠️ AI is not connected. Please sign in to enable Dozer AI.";
+           return;
+        }
+
+
+
+        const stream = await puter.ai.chat(aiPrompt, {
+            model: "gpt-5-nano",
+            stream: true
         });
 
         lastAiBubble.innerText = "";
@@ -634,5 +682,4 @@ document.getElementById('clearManualBtn').addEventListener('click', () => {
     animate(); 
     updatePlot();
 };
-
 
