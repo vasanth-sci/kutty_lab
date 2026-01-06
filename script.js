@@ -514,6 +514,28 @@ function getSimulationState() {
     };
 }
 
+window.puterReady = false;
+window.puterConnecting = false;
+
+function connectPuterAI() {
+    if (window.puterReady || window.puterConnecting) return;
+
+    window.puterConnecting = true;
+
+    puter.auth.signIn()
+        .then(() => {
+            window.puterReady = true;
+            console.log("Puter AI connected");
+        })
+        .catch(() => {
+            console.warn("User did not sign in");
+        })
+        .finally(() => {
+            window.puterConnecting = false;
+        });
+}
+
+
 
 
 
@@ -523,12 +545,7 @@ window.onload = async () => {
 
     window.puterReady = false;
 
-    puter.auth.signIn().then(() => {
-        window.puterReady = true;
-        console.log("Puter connected");
-    }).catch(() => {
-        console.warn("Puter not connected");
-    });
+   
 
     initWorld('scalarPlot', 'scalar');
     initWorld('vectorPlot', 'vector');
@@ -552,14 +569,25 @@ const toggleBtn = document.getElementById("chatToggle");
 
 toggleBtn.onclick = (e) => {
   e.stopPropagation();
+
+  const wasMinimized = chatBox.classList.contains("minimized");
   chatBox.classList.toggle("minimized");
+
+  // If user is opening the chat for first time → connect AI
+  if (wasMinimized && !window.puterReady) {
+      connectPuterAI();
+  }
 };
 
 chatBox.onclick = () => {
   if (chatBox.classList.contains("minimized")) {
     chatBox.classList.remove("minimized");
+    if (!window.puterReady) {
+        connectPuterAI();
+    }
   }
 };
+
 
 
 function add(text, cls){
@@ -595,6 +623,16 @@ gSend.onclick = async () => {
         - You CANNOT change, control, click, move, or modify anything.
         - You must NEVER claim you adjusted parameters or edited the scene.
         - You may only analyze, explain, infer, and give theoretical or practical insights.
+
+        MATH FORMATTING RULES:
+        - Never write equations inline inside sentences.
+        - Every mathematical expression must be on its own line.
+        - Use one equation per line.
+        - Do not mix words and formulas on the same line.
+        - Prefer clear symbolic form like:
+        v = (u, v, w)
+        ∇·F = ∂Fx/∂x + ∂Fy/∂y
+        ∇×F = ...
 
         Current simulation state (internal reference only, do not repeat unless the user explicitly asks):
         ${JSON.stringify(simState, null, 2)}
