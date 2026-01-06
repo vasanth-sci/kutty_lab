@@ -661,7 +661,7 @@ gSend.onclick = async () => {
 
     } catch (error) {
         console.error("Puter Error:", error);
-        lastAiBubble.innerText = "Error: Could not connect to Puter AI.";
+        lastAiBubble.innerText = "Error: Could not connect to Dozer AI.";
     }
     
     gMsg.scrollTop = gMsg.scrollHeight;
@@ -720,4 +720,5 @@ document.getElementById('clearManualBtn').addEventListener('click', () => {
     animate(); 
     updatePlot();
 };
+
 
