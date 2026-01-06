@@ -516,6 +516,12 @@ window.onload = async () => {
 const gMsg = document.getElementById("gMessages");
 const gIn = document.getElementById("gInput");
 const gSend = document.getElementById("gSend");
+gIn.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();     // prevent new line
+        gSend.click();          // trigger send
+    }
+});
 
 
 const chatBox = document.getElementById("geminiChat");
@@ -628,4 +634,5 @@ document.getElementById('clearManualBtn').addEventListener('click', () => {
     animate(); 
     updatePlot();
 };
+
 
