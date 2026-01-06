@@ -274,8 +274,8 @@ input, select {
   height: 60px;
   border-radius: 30px;
   cursor: pointer;
-  background: #6366f1; /* Main indigo color when minimized */
-  box-shadow: 0 10px 30px rgba(99, 102, 241, 0.5);
+  background: #e0d6d6; /* Main indigo color when minimized */
+  box-shadow: 0 10px 30px rgba(32, 32, 36, 0.5);
 }
 
 #geminiChat.minimized .g-head {
@@ -297,10 +297,12 @@ input, select {
 
 /* Show icon when minimized */
 #geminiChat.minimized .g-head::after {
-  content: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="white"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z"/></svg>');
+  content: "🐷";
+  font-size: 28px;
   display: block;
   animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
+
 
 /* Dark Mode Overrides */
 .dark-mode #geminiChat {
