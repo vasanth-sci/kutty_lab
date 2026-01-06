@@ -550,7 +550,6 @@ window.onload = async () => {
 
     if (localStorage.getItem("puter_signed_in") === "true") {
         window.puterReady = true;
-        connectPuterAI();
     } else {
         window.puterReady = false;
     }
@@ -775,4 +774,5 @@ document.getElementById('clearManualBtn').addEventListener('click', () => {
     animate(); 
     updatePlot();
 };
+
 
