@@ -5,6 +5,70 @@ body.dark-mode { background-color: #020617 !important; color: #f8fafc !important
 .dark-mode .dark-target-bg { background-color: #020617 !important; }
 .dark-mode input, .dark-mode select { background-color: #1e293b !important; color: white !important; border-color: #334155 !important; }
 
+
+/* Load menu theme */
+/* File list rows */
+#loadMenu {
+  padding: 6px;
+}
+
+.save-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.save-name {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Delete icon */
+.save-del {
+  border: none;
+  background: transparent;
+  color: #94a3b8;
+  font-size: 14px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s, color 0.15s;
+}
+
+.save-row:hover .save-del {
+  opacity: 1;
+}
+
+.save-del:hover {
+  color: #ef4444;
+}
+
+/* Light theme */
+.save-row:hover {
+  background: rgba(99,102,241,0.1);
+}
+
+/* Dark theme */
+body.dark-mode .save-row:hover {
+  background: rgba(255,255,255,0.08);
+}
+
+body.dark-mode .save-del {
+  color: #64748b;
+}
+
+body.dark-mode .save-del:hover {
+  color: #f87171;
+}
+
+
+
 /* loader */
 .loader {
   width: 40px;
