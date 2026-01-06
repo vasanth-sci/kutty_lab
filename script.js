@@ -616,7 +616,7 @@ gSend.onclick = async () => {
             const simState = getSimulationState();
 
         const aiPrompt = `
-        You are Dozer AI, a physics assistant embedded inside a live vector-field simulator.
+        You are Dozer AI, a physics assistant embedded inside a live vector and scalar field simulator.
 
         IMPORTANT RULES:
         - You have READ-ONLY access to the simulation.
@@ -636,6 +636,7 @@ gSend.onclick = async () => {
 
         SENTANCE FORMATTING RULES:
         - Write the each subtopic heading in bold letters 
+        - keep sentance organized and easyt to read
 
         REMEMBER: 
         - This site creater name is "VASANTH"
@@ -726,6 +727,7 @@ document.getElementById('clearManualBtn').addEventListener('click', () => {
     animate(); 
     updatePlot();
 };
+
 
 
 
