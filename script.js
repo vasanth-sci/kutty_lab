@@ -504,12 +504,14 @@ window.onclick = function(event) {
 
 // --- Initialization & Event Listeners ---
 
-window.onload = () => {
+window.onload = async () => {
+
+    await puter.auth.signIn();
 
     initWorld('scalarPlot', 'scalar');
     initWorld('vectorPlot', 'vector');
 
-    const API_KEY = "AIzaSyD_x35FSs6gl9bnVlSct3KMnBboHAZswSA";
+    
 
 const gMsg = document.getElementById("gMessages");
 const gIn = document.getElementById("gInput");
@@ -539,29 +541,41 @@ function add(text, cls){
   gMsg.scrollTop = gMsg.scrollHeight;
 }
 
+gSend.onclick = async () => {
+    const q = gIn.value.trim();
+    if (!q) return;
+    gIn.value = "";
 
-gSend.onclick = async ()=>{
-  const q = gIn.value.trim();
-  if(!q) return;
-  gIn.value="";
+    // 1. Add your message
+    add(q, "g-user");
 
-  add(q,"g-user");
-  add("Thinking…","g-ai");
+    // 2. Add the "Thinking..." bubble and keep a reference to it
+    add("Thinking...", "g-ai");
+    const bubbles = gMsg.querySelectorAll(".g-ai");
+    const lastAiBubble = bubbles[bubbles.length - 1];
 
-  const r = await fetch(
-    "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key="+API_KEY,{
-      method:"POST",
-      headers:{ "Content-Type":"application/json" },
-      body: JSON.stringify({
-        contents:[{parts:[{text:q}]}]
-      })
+    try {
+                const stream = await puter.ai.chat(q, {
+        model: "gpt-5-nano",
+        stream: true
+        });
+
+        lastAiBubble.innerText = "";
+
+        for await (const chunk of stream) {
+        lastAiBubble.innerText += chunk;
+        gMsg.scrollTop = gMsg.scrollHeight;
+        }
+
+    } catch (error) {
+        console.error("Puter Error:", error);
+        lastAiBubble.innerText = "Error: Could not connect to Puter AI.";
     }
-  );
-
-  const j = await r.json();
-  gMsg.lastChild.innerText =
-    j.candidates?.[0]?.content?.parts?.[0]?.text || "No response";
+    
+    gMsg.scrollTop = gMsg.scrollHeight;
 };
+
+
 
 
 document.getElementById('addParticleBtn').addEventListener('click', () => {
@@ -614,5 +628,4 @@ document.getElementById('clearManualBtn').addEventListener('click', () => {
     animate(); 
     updatePlot();
 };
-
 
