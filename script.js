@@ -524,11 +524,16 @@ function connectPuterAI() {
 
     puter.auth.signIn()
         .then(() => {
-            window.puterReady = true;
-            console.log("Puter AI connected");
-        })
-        .catch(() => {
+        window.puterReady = true;
+
+        // Save login permanently
+        localStorage.setItem("puter_signed_in", "true");
+
+        console.log("Puter AI connected");
+        })  
+    .catch(() => {
             console.warn("User did not sign in");
+            localStorage.removeItem("puter_signed_in");
         })
         .finally(() => {
             window.puterConnecting = false;
@@ -543,7 +548,12 @@ function connectPuterAI() {
 
 window.onload = async () => {
 
-    window.puterReady = false;
+    if (localStorage.getItem("puter_signed_in") === "true") {
+        window.puterReady = true;
+        connectPuterAI();
+    } else {
+        window.puterReady = false;
+    }
 
    
 
@@ -608,41 +618,57 @@ gSend.onclick = async () => {
 
 
     // 2. Add the "Thinking..." bubble and keep a reference to it
-    add("Thinking...", "g-ai");
-    const bubbles = gMsg.querySelectorAll(".g-ai");
-    const lastAiBubble = bubbles[bubbles.length - 1];
+        const thinking = document.createElement("div");
+        thinking.className = "g-ai";
+        thinking.innerHTML = `
+        <div style="display:flex; align-items:center; gap:8px;">
+            <div class="loader"></div>
+            <span style="font-size:13px; opacity:0.7;">Wait Bruhhh..</span>
+        </div>
+        `;
+        gMsg.appendChild(thinking);
+        gMsg.scrollTop = gMsg.scrollHeight;
+
+     const lastAiBubble = thinking;
+
 
     try {
-            const simState = getSimulationState();
+            let simText = "";
+
+            if (userText.match(/field|flow|particle|vector|scalar|stream|plot|this/i)) {
+                const s = getSimulationState();
+                simText = `
+            Current simulation:
+            Scalar=${s.scalarField}
+            Vector=${s.vectorField}
+            `;
+            }
+
 
         const aiPrompt = `
-        You are Dozer AI, a physics assistant embedded inside a live vector and scalar field simulator.
+        You are Dozer AI, a physics assistant inside a live scalar- vector-field simulator.
 
-        IMPORTANT RULES:
-        - You have READ-ONLY access to the simulation.
-        - You CANNOT change, control, click, move, or modify anything.
-        - You must NEVER claim you adjusted parameters or edited the scene.
-        - You may only analyze, explain, infer, and give theoretical or practical insights.
+        Rules:
+        • Read-only: never claim to modify, click, or control the simulation.
+        • Only analyze, explain, or infer from the current state.
+        • Be clear, friendly, and slightly witty.
 
-        MATH FORMATTING RULES:
-        - Never write equations inline inside sentences.
-        - Every mathematical expression must be on its own line.
-        - Use one equation per line.
-        - Do not mix words and formulas on the same line.
-        - Prefer clear symbolic form like:
+        Math format:
+        • Never mix text and equations on the same line.
+        • One formula per line.
+        • Use clean symbolic form:
         v = (u, v, w)
         ∇·F = ∂Fx/∂x + ∂Fy/∂y
         ∇×F = ...
 
-        SENTANCE FORMATTING RULES:
-        - Write the each subtopic heading in bold letters 
-        - keep sentance organized and easyt to read
 
-        REMEMBER: 
-        - This site creater name is "VASANTH"
 
-        Current simulation state (internal reference only, do not repeat unless the user explicitly asks):
-        ${JSON.stringify(simState, null, 2)}
+        Creator: Vasanth (mention only if asked).
+
+        ${simText}
+
+
+
 
         User question:
         ${userText}
@@ -655,24 +681,46 @@ gSend.onclick = async () => {
 
 
         const stream = await puter.ai.chat(aiPrompt, {
-            model: "gpt-5-nano",
+            model: "gpt-5.2-chat",
             stream: true
         });
 
-        lastAiBubble.innerText = "";
+        lastAiBubble.innerHTML = "";
 
-        for await (const chunk of stream) {
-        lastAiBubble.innerText += chunk;
-        gMsg.scrollTop = gMsg.scrollHeight;
-        }
 
-    } catch (error) {
-        console.error("Puter Error:", error);
-        lastAiBubble.innerText = "Error: Could not connect to Dozer AI.";
-    }
-    
-    gMsg.scrollTop = gMsg.scrollHeight;
-};
+        let buffer = "";
+        let lastFlush = Date.now();
+
+            for await (const chunk of stream) {
+                if (typeof chunk === "string") {
+                    buffer += chunk;
+                } 
+                else if (chunk?.text) {
+                    buffer += chunk.text;
+                }
+
+                // Update UI only every 40ms (fast & smooth)
+                if (Date.now() - lastFlush > 40) {
+                    lastAiBubble.innerText += buffer;
+                    buffer = "";
+                    lastFlush = Date.now();
+                    gMsg.scrollTop = gMsg.scrollHeight;
+                }
+            }
+
+            // Flush remaining text
+            if (buffer.length > 0) {
+                lastAiBubble.innerText += buffer;
+                gMsg.scrollTop = gMsg.scrollHeight;
+            }
+
+                } catch (error) {
+                    console.error("Puter Error:", error);
+                    lastAiBubble.innerText = "Error: Could not connect to Dozer AI.";
+                }
+                
+                gMsg.scrollTop = gMsg.scrollHeight;
+            };
 
 
 
@@ -727,7 +775,4 @@ document.getElementById('clearManualBtn').addEventListener('click', () => {
     animate(); 
     updatePlot();
 };
-
-
-
 
