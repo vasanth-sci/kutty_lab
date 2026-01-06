@@ -541,6 +541,103 @@ function connectPuterAI() {
 }
 
 
+// =======================
+// LOCAL SAVE SYSTEM
+// =======================
+
+// Encode state to URL-safe string
+function encodeState(obj) {
+    return btoa(encodeURIComponent(JSON.stringify(obj)));
+}
+
+// Decode from URL
+function decodeState(str) {
+    return JSON.parse(decodeURIComponent(atob(str)));
+}
+
+// Save locally
+function saveSimulation(name) {
+    if (!name) return alert("Enter a name");
+    const state = getSimulationState();
+    localStorage.setItem("dozer_" + name, JSON.stringify(state));
+    alert("Saved locally!");
+}
+
+// Load locally
+function loadSimulation(name) {
+    const txt = localStorage.getItem("dozer_" + name);
+    if (!txt) return alert("Not found");
+
+    const s = JSON.parse(txt);
+    applySimulation(s);
+}
+
+// Share by link
+function shareSimulation() {
+    const state = getSimulationState();
+    const encoded = encodeState(state);
+    const url = `${location.origin}${location.pathname}?s=${encoded}`;
+    prompt("Share this link:", url);
+}
+
+// Apply simulation to UI
+function applySimulation(s) {
+    document.getElementById("scalar").value = s.scalarField;
+    document.getElementById("vector").value = s.vectorField;
+    document.getElementById("density").value = s.density;
+    document.getElementById("arrowSize").value = s.arrowSize;
+    document.getElementById("flowSpeed").value = s.flowSpeed;
+    document.getElementById("enableTrace").checked = s.traceEnabled;
+
+    updatePlot();
+}
+
+function refreshLoadMenu() {
+  const menu = document.getElementById("loadMenu");
+  menu.innerHTML = "";
+
+  const keys = Object.keys(localStorage)
+    .filter(k => k.startsWith("dozer_"))
+    .sort();
+
+  if (keys.length === 0) {
+    menu.innerHTML = `<div class="px-4 py-3 text-slate-400 text-sm">No saved simulations</div>`;
+    return;
+  }
+
+  keys.forEach(k => {
+    const name = k.replace("dozer_", "");
+
+    const row = document.createElement("div");
+    row.className = "save-row";
+
+    const left = document.createElement("div");
+    left.className = "save-name";
+    left.innerText = name;
+    left.onclick = () => {
+      loadSimulation(name);
+      menu.classList.add("hidden");
+    };
+
+    const del = document.createElement("button");
+    del.className = "save-del";
+    del.innerHTML = "✕";
+    del.onclick = (e) => {
+      e.stopPropagation();
+      if (confirm(`Delete "${name}"?`)) {
+        localStorage.removeItem("dozer_" + name);
+        refreshLoadMenu();
+      }
+    };
+
+    row.appendChild(left);
+    row.appendChild(del);
+    menu.appendChild(row);
+  });
+}
+
+
+
 
 
 
@@ -550,6 +647,7 @@ window.onload = async () => {
 
     if (localStorage.getItem("puter_signed_in") === "true") {
         window.puterReady = true;
+        connectPuterAI();
     } else {
         window.puterReady = false;
     }
@@ -774,5 +872,32 @@ document.getElementById('clearManualBtn').addEventListener('click', () => {
     animate(); 
     updatePlot();
 };
+
+// Load from share link if present
+const params = new URLSearchParams(location.search);
+if (params.has("s")) {
+    try {
+        const state = decodeState(params.get("s"));
+        applySimulation(state);
+    } catch(e) {
+        console.warn("Invalid share link");
+    }
+}
+
+const loadBtn = document.getElementById("loadBtn");
+const loadMenu = document.getElementById("loadMenu");
+
+loadBtn.onclick = () => {
+  refreshLoadMenu();
+  loadMenu.classList.toggle("hidden");
+};
+
+// Close when clicking elsewhere
+document.addEventListener("click", e => {
+  if (!loadBtn.contains(e.target) && !loadMenu.contains(e.target)) {
+    loadMenu.classList.add("hidden");
+  }
+});
+
 
 
