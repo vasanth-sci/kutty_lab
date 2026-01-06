@@ -1,3 +1,6 @@
+
+// Session memory (clears on page reload)
+let chatMemory = JSON.parse(sessionStorage.getItem("dozerChat")) || [];
 let isDarkMode = false;
 const scenes = { scalar: null, vector: null };
 const cameras = { scalar: null, vector: null };
@@ -645,6 +648,10 @@ function refreshLoadMenu() {
 
 window.onload = async () => {
 
+    chatMemory.forEach(m => {
+    add(m.content, m.role === "user" ? "g-user" : "g-ai");
+    });
+
     if (localStorage.getItem("puter_signed_in") === "true") {
         window.puterReady = true;
         connectPuterAI();
@@ -712,6 +719,9 @@ gSend.onclick = async () => {
 
     // 1. Add your message
     add(userText, "g-user");
+    chatMemory.push({ role: "user", content: userText });
+    sessionStorage.setItem("dozerChat", JSON.stringify(chatMemory));
+
 
 
     // 2. Add the "Thinking..." bubble and keep a reference to it
@@ -740,7 +750,11 @@ gSend.onclick = async () => {
             Vector=${s.vectorField}
             `;
             }
+        
 
+        const historyText = chatMemory
+        .map(m => (m.role === "user" ? "User: " : "Assistant: ") + m.content)
+        .join("\n");
 
         const aiPrompt = `
         You are Dozer AI, a physics assistant inside a live scalar- vector-field simulator.
@@ -761,6 +775,7 @@ gSend.onclick = async () => {
 
 
         Creator: Vasanth (mention only if asked).
+        ${historyText}
 
         ${simText}
 
@@ -810,6 +825,12 @@ gSend.onclick = async () => {
                 lastAiBubble.innerText += buffer;
                 gMsg.scrollTop = gMsg.scrollHeight;
             }
+            chatMemory.push({
+                role: "assistant",
+                content: lastAiBubble.innerText
+            });
+            sessionStorage.setItem("dozerChat", JSON.stringify(chatMemory));
+
 
                 } catch (error) {
                     console.error("Puter Error:", error);
