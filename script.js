@@ -634,6 +634,12 @@ gSend.onclick = async () => {
         ∇·F = ∂Fx/∂x + ∂Fy/∂y
         ∇×F = ...
 
+        SENTANCE FORMATTING RULES:
+        - Write the each subtopic heading in bold letters 
+
+        REMEMBER: 
+        - This site creater name is "VASANTH"
+
         Current simulation state (internal reference only, do not repeat unless the user explicitly asks):
         ${JSON.stringify(simState, null, 2)}
 
@@ -720,5 +726,6 @@ document.getElementById('clearManualBtn').addEventListener('click', () => {
     animate(); 
     updatePlot();
 };
+
 
 
