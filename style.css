@@ -463,3 +463,211 @@ input, select {
 @keyframes slideInRight { from { transform: translateX(20px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
 @keyframes slideInLeft { from { transform: translateX(-20px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
 
+
+/* ==================================================
+   DOZER LAB — FINAL MOBILE LAYOUT (SAFE)
+   ================================================== */
+@media (max-width: 640px) {
+
+  html, body {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden !important;
+  }
+
+  /* ================= HEADER ================= */
+
+  header {
+    flex-wrap: wrap !important;
+    padding: 8px 10px !important;
+    gap: 8px;
+  }
+
+  header h1 {
+    font-size: 14px !important;
+    white-space: nowrap;
+  }
+
+  #saveBar {
+    width: 100% !important;
+    display: flex !important;
+    gap: 6px;
+    justify-content: space-between !important;
+    margin: 0 !important;
+    order: 3;
+  }
+
+  header > div:last-child {
+    order: 2;
+  }
+
+  #saveBar input {
+    flex: 1;
+    min-width: 0;
+    font-size: 11px !important;
+    padding: 6px !important;
+  }
+
+  #saveBar button {
+    padding: 6px 8px !important;
+    font-size: 12px !important;
+  }
+
+  /* ================= SIDEBAR ================= */
+
+  aside {
+    width: 100% !important;
+    max-width: 100vw !important;
+    padding: 12px !important;
+    box-sizing: border-box !important;
+    overflow-x: hidden !important;
+  }
+
+  aside label {
+    font-size: 10px !important;
+  }
+
+  aside input,
+  aside select {
+    font-size: 11px !important;
+    padding: 8px !important;
+    border-radius: 10px !important;
+  }
+
+  /* XYZ boxes */
+  #manualX, #manualY, #manualZ {
+    font-size: 11px !important;
+    padding: 6px !important;
+  }
+
+  #addParticleBtn {
+    font-size: 12px !important;
+    padding: 10px !important;
+  }
+
+  /* ================= MAIN PLOTS ================= */
+
+  main {
+    display: flex !important;
+    flex-direction: column !important;
+    width: 100% !important;
+    max-width: 100vw !important;
+    padding: 10px !important;
+    gap: 12px !important;
+    overflow-x: hidden !important;
+  }
+
+  #scalarCont,
+  #vectorCont {
+    width: 100% !important;
+    height: 360px !important;
+    min-height: 360px !important;
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* Plot labels & buttons */
+  #scalarCont span,
+  #vectorCont span,
+  #scalarCont button,
+  #vectorCont button {
+    font-size: 9px !important;
+    padding: 4px 8px !important;
+    z-index: 20;
+    pointer-events: auto;
+  }
+
+  #flowToggle {
+    font-size: 9px !important;
+    padding: 6px 10px !important;
+    z-index: 30;
+  }
+
+  /* ================= THREE.JS SAFETY ================= */
+
+  canvas {
+    touch-action: none;
+    pointer-events: auto !important;
+  }
+
+  #scalarPlot,
+  #vectorPlot {
+    position: relative;
+    z-index: 1;
+    pointer-events: auto;
+  }
+
+  /* ================= GEMINI CHAT ================= */
+
+  #geminiChat {
+    width: 280px !important;
+    height: 400px !important;
+    right: 10px !important;
+    bottom: 10px !important;
+  }
+
+  .g-ai,
+  .g-user {
+    font-size: 12px !important;
+    padding: 8px 12px !important;
+  }
+
+  .g-input input {
+    font-size: 12px !important;
+    padding: 8px 10px !important;
+  }
+
+  .g-input button {
+    width: 36px !important;
+    height: 36px !important;
+  }
+
+  #geminiChat.minimized {
+    width: 48px !important;
+    height: 48px !important;
+  }
+
+  #geminiChat.minimized .g-head::after {
+    font-size: 22px !important;
+  }
+
+}
+@media (max-width: 640px) {
+  .scale-in,
+  .fullscreen-mode,
+  .flex,
+  .h-screen {
+    overflow: visible !important;
+    transform: none !important;
+  }
+}
+@media (max-width: 640px) {
+  #scalarPlot,
+  #vectorPlot,
+  canvas {
+    pointer-events: auto !important;
+    position: relative;
+    z-index: 1;
+  }
+}
+
+
+@media (max-width: 640px) {
+
+  /* Disable GPU layers that block touch */
+  * {
+    transform: none !important;
+    filter: none !important;
+    will-change: auto !important;
+  }
+
+  .fullscreen-mode {
+    position: relative !important;
+  }
+
+  canvas {
+    touch-action: manipulation;
+    pointer-events: auto !important;
+  }
+
+}
